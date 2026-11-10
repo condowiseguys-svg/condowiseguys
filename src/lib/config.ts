@@ -15,9 +15,4 @@ export function orderingEnabled() {
   return s.supabase && s.stripe;
 }
 
-/** Absolute site URL for Stripe redirects. */
-export function siteUrl() {
-  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
-}
+export { siteUrl } from "@/lib/ops/urls";

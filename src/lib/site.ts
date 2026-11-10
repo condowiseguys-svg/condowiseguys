@@ -5,7 +5,6 @@ export const site = {
   domain: "condowiseguys.com",
   email: "info@condowiseguys.com",
   tagline: "BC strata document reviews, in plain English",
-  retentionDays: 90,
 };
 
 export type Tier = {

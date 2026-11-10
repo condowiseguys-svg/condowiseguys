@@ -1,12 +1,13 @@
-import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export const DOCUMENTS_BUCKET = "strata-documents";
+/** Permanent copies of approved reports and the exact documents they were based on. */
+export const RECORDS_BUCKET = "order-records";
 
 let client: SupabaseClient | null = null;
 
 /**
- * Server-only Supabase client using the service role key.
+ * Supabase client using the service role key, for the web server and Trigger.dev tasks.
  * Never import this from a client component.
  */
 export function supabaseAdmin(): SupabaseClient {
