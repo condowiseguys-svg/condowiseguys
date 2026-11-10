@@ -11,6 +11,8 @@
     "trigger:deploy": "trigger deploy"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.119.0",
     "@trigger.dev/sdk": "^4.8.3",
     "next": "15.5.29",
     "react": "19.1.0",
