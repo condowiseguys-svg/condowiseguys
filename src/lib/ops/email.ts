@@ -3,8 +3,13 @@ import { logEvent } from "./events";
 
 export type EmailResult = "sent" | "already_sent" | "not_configured";
 
+/** Vercel keeps names exactly as typed, so accept the lowercase name the key was first saved under. */
+function resendKey() {
+  return process.env.RESEND_API_KEY || process.env.resend_api_key;
+}
+
 export function emailConfigured() {
-  return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+  return Boolean(resendKey() && process.env.EMAIL_FROM);
 }
 
 /**
@@ -53,7 +58,7 @@ export async function sendEmailOnce(msg: {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
-      authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      authorization: `Bearer ${resendKey()}`,
       "content-type": "application/json",
       "idempotency-key": msg.key.slice(0, 256),
     },
