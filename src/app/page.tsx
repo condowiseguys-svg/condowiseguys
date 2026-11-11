@@ -1,103 +1,51 @@
-import Image from "next/image";
+import Link from "next/link";
+import { buttonPrimary } from "@/components/ui";
+import { QUICK_SCAN, formatMoney } from "@/lib/config";
+
+const steps = [
+  ["Order", "Choose Quick Scan and pay securely by card."],
+  ["Upload", "Send us the strata package: minutes, financials, depreciation report, bylaws."],
+  ["Review", "A real person checks and approves every report before it is released."],
+  ["Download", "Sign in to collect your report. It is never sent as an email attachment."],
+];
 
 export default function Home() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="space-y-12">
+      <section className="max-w-2xl">
+        <h1 className="text-4xl font-semibold tracking-tight text-brand-dark">
+          Know what you are buying into before you buy the condo.
+        </h1>
+        <p className="mt-4 text-lg text-slate-600">
+          Strata packages run to hundreds of pages. We read them and tell you, in plain language, what stands out.
+        </p>
+      </section>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <section className="bg-white rounded-xl border border-slate-200 p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div>
+          <h2 className="text-xl font-semibold">{QUICK_SCAN.name}</h2>
+          <p className="mt-1 text-slate-600 max-w-xl">{QUICK_SCAN.description}</p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        <div className="shrink-0 sm:text-right">
+          <div className="text-3xl font-semibold">{formatMoney(QUICK_SCAN.priceCents, QUICK_SCAN.currency)}</div>
+          <Link href="/order/quick-scan" className={`${buttonPrimary} mt-3`}>
+            Order a Quick Scan
+          </Link>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="font-semibold mb-4">How it works</h2>
+        <ol className="grid sm:grid-cols-4 gap-4">
+          {steps.map(([title, text], i) => (
+            <li key={title} className="bg-white rounded-xl border border-slate-200 p-5">
+              <div className="text-xs font-mono text-accent">Step {i + 1}</div>
+              <div className="font-medium mt-1">{title}</div>
+              <p className="text-sm text-slate-600 mt-1">{text}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
     </div>
   );
 }
