@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { RiskBadge, type Risk } from "@/components/RiskBadge";
-import { formatPrice, rushAddOn, site, tiers } from "@/lib/site";
+import { formatPrice, rushAddOn, tiers } from "@/lib/site";
 
 const previewFindings: { text: string; risk: Risk }[] = [
   {
@@ -88,7 +88,7 @@ const faqs = [
   },
   {
     q: "What happens to my documents?",
-    a: `They are stored in Canada, used only to prepare your report, never used to train AI models, and deleted ${site.retentionDays} days after delivery.`,
+    a: "They are stored privately in Canada, used only to prepare your report, and never used to train AI models. We keep a sealed copy of the documents and the final report as the record of what we reviewed.",
   },
   {
     q: "How is the special levy estimate worked out?",

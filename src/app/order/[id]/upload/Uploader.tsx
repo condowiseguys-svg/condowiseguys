@@ -11,6 +11,7 @@ type Item = {
   path?: string;
   status: "uploading" | "done" | "error";
   message?: string;
+  locked?: boolean;
 };
 
 function mb(bytes: number) {
@@ -24,12 +25,20 @@ export function Uploader({
 }: {
   orderId: string;
   token: string;
-  existing: { path: string; name: string; size: number }[];
+  existing: { path: string; name: string; size: number; locked?: boolean; problem?: string }[];
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<Item[]>(
-    existing.map((f) => ({ key: f.path, name: f.name, size: f.size, path: f.path, status: "done" })),
+    existing.map((f) => ({
+      key: f.path,
+      name: f.name,
+      size: f.size,
+      path: f.path,
+      locked: f.locked,
+      status: f.problem ? "error" : "done",
+      message: f.problem ? `${f.problem} Remove it and upload a new copy.` : undefined,
+    })),
   );
   const [dragging, setDragging] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -61,7 +70,10 @@ export function Uploader({
   }
 
   async function remove(item: Item) {
-    if (item.path) await removeUpload(orderId, token, item.path);
+    if (item.path) {
+      const res = await removeUpload(orderId, token, item.path);
+      if ("error" in res) return setError(res.error ?? "Could not remove the file.");
+    }
     setItems((list) => list.filter((i) => i.key !== item.key));
   }
 
@@ -129,7 +141,9 @@ export function Uploader({
                   {i.status === "uploading" ? "Uploading…" : i.status === "error" ? i.message : mb(i.size)}
                 </p>
               </div>
-              {i.status !== "uploading" && (
+              {i.locked ? (
+                <span className="shrink-0 text-xs font-medium text-risk-green">Received</span>
+              ) : i.status !== "uploading" && (
                 <button type="button" onClick={() => remove(i)} className="shrink-0 text-slate-500 hover:text-risk-red">
                   Remove
                 </button>

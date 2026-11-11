@@ -1,10 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { siteUrl, orderingEnabled } from "@/lib/config";
-import { isStripeTestMode, stripe } from "@/lib/stripe";
+import { startCheckout } from "@/lib/checkout";
+import { orderingEnabled } from "@/lib/config";
+import { logEvent } from "@/lib/ops/events";
+import { isStripeTestMode } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { orderPriceCents, rushAddOn, tiers } from "@/lib/site";
+import { orderPriceCents, tiers } from "@/lib/site";
 
 export type OrderFormState = { error?: string };
 
@@ -58,29 +60,6 @@ export async function createOrder(_prev: OrderFormState, form: FormData): Promis
     return { error: "Something went wrong saving your order. Please try again." };
   }
 
-  const base = siteUrl();
-  const session = await stripe().checkout.sessions.create({
-    mode: "payment",
-    customer_email: buyerEmail,
-    client_reference_id: order.id,
-    metadata: { order_id: order.id },
-    line_items: [
-      {
-        quantity: 1,
-        price_data: {
-          currency: "cad",
-          unit_amount: amount,
-          product_data: {
-            name: `${tier.name}${rush ? ` + ${rushAddOn.name}` : ""}`,
-            description: propertyAddress,
-          },
-        },
-      },
-    ],
-    success_url: `${base}/order/${order.id}/upload?token=${order.upload_token}&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${base}/order?tier=${tier.id}&cancelled=1`,
-  });
-
-  await db.from("orders").update({ stripe_session_id: session.id }).eq("id", order.id);
-  redirect(session.url!);
+  await logEvent(order.id, "buyer", "order_created", { tier: tier.id, rush, amount_cents: amount });
+  redirect(await startCheckout({ ...order, tier: tier.id, rush, amount_cents: amount, buyer_email: buyerEmail, property_address: propertyAddress }));
 }
