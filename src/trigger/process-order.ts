@@ -1,8 +1,7 @@
 import { logger, task, usage } from "@trigger.dev/sdk";
 import { recordCost } from "@/lib/ops/costs";
-import { logEvent, raiseIssue } from "@/lib/ops/events";
-import { checkOrderDocuments, requestReplacements } from "@/lib/ops/processing";
-import { supabaseAdmin } from "@/lib/supabase/admin";
+import { raiseIssue } from "@/lib/ops/events";
+import { runDocumentChecks } from "@/lib/ops/processing";
 
 /**
  * Runs after a buyer submits (or resubmits) their documents.
@@ -24,35 +23,13 @@ export const processOrderTask = task({
   machine: "small-2x",
   retry: { maxAttempts: 3 },
   run: async (payload: { orderId: string; submission: number }, { ctx }) => {
-    const db = supabaseAdmin();
-    const { data: claimed, error } = await db.rpc("claim_order_processing", {
-      p_order_id: payload.orderId,
-      p_run_id: ctx.run.id,
-      p_submission: payload.submission,
-    });
-    if (error) throw error;
-    if (!claimed) {
+    const result = await runDocumentChecks(payload.orderId, payload.submission, ctx.run.id, ctx.attempt.number === 1);
+    if ("skipped" in result) {
       logger.log("Another run owns this order, or it is no longer processing. Skipping.", payload);
-      return { skipped: true };
+      return result;
     }
-    if (ctx.attempt.number === 1) await logEvent(payload.orderId, "system", "processing_started", { run: ctx.run.id });
-
-    const { checked, problems } = await checkOrderDocuments(payload.orderId);
-    if (problems.length) {
-      await requestReplacements(payload.orderId, payload.submission, problems);
-      await recordRunCost(payload.orderId, ctx.run.id);
-      return { status: "awaiting_documents", problems: problems.length };
-    }
-
-    await db
-      .from("orders")
-      .update({ documents_checked_at: new Date().toISOString() })
-      .eq("id", payload.orderId)
-      .eq("processing_run_id", ctx.run.id);
-    await logEvent(payload.orderId, "system", "documents_checked", { documents: checked });
-
     await recordRunCost(payload.orderId, ctx.run.id);
-    return { status: "ready_for_analysis", documents: checked };
+    return result;
   },
   onFailure: async ({ payload, error, ctx }) => {
     await raiseIssue({

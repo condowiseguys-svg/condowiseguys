@@ -168,3 +168,34 @@ export async function requestMissingDocuments(orderId: string, items: string[], 
   await logEvent(orderId, by, "missing_documents_requested", { items, note, moved });
   return moved;
 }
+
+/**
+ * The document-check step of processing one submission. Used by the Trigger.dev task and,
+ * when Trigger.dev isn't set up, run directly on the web server after the response is sent.
+ * Only the run that claims the order does any work; a second run for the same submission exits.
+ */
+export async function runDocumentChecks(orderId: string, submission: number, runId: string, firstAttempt = true) {
+  const db = supabaseAdmin();
+  const { data: claimed, error } = await db.rpc("claim_order_processing", {
+    p_order_id: orderId,
+    p_run_id: runId,
+    p_submission: submission,
+  });
+  if (error) throw error;
+  if (!claimed) return { skipped: true as const };
+  if (firstAttempt) await logEvent(orderId, "system", "processing_started", { run: runId });
+
+  const { checked, problems } = await checkOrderDocuments(orderId);
+  if (problems.length) {
+    await requestReplacements(orderId, submission, problems);
+    return { status: "awaiting_documents" as const, problems: problems.length };
+  }
+
+  await db
+    .from("orders")
+    .update({ documents_checked_at: new Date().toISOString() })
+    .eq("id", orderId)
+    .eq("processing_run_id", runId);
+  await logEvent(orderId, "system", "documents_checked", { documents: checked });
+  return { status: "ready_for_analysis" as const, documents: checked };
+}
