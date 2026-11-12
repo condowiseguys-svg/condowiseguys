@@ -29,7 +29,7 @@ export default async function DonePage({
         <h1 className="mt-4 text-3xl font-bold tracking-tight text-navy-900">Thanks, {order.buyer_name.split(" ")[0]}</h1>
         <p className="mt-4 leading-7 text-slate-600">
           We&apos;re reviewing the documents for <strong>{order.property_address}</strong>. Your{" "}
-          {tier?.name ?? "review"} will be emailed to <strong>{order.buyer_email}</strong>
+          {tier ? `${tier.name} report` : "report"} will be emailed to <strong>{order.buyer_email}</strong>
           {tier ? ` (${tier.turnaround.toLowerCase()}${order.rush ? ", with Rush priority" : ""})` : ""}.
         </p>
         <p className="mt-4 leading-7 text-slate-600">

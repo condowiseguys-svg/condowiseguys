@@ -24,7 +24,7 @@ export default async function AdminPage() {
   }
   const { rows, attention, summary, usdToCad } = await loadDashboard();
   const avgCost = summary.orders30 ? summary.cost30 / summary.orders30 : 0;
-  const tierName = (id: string) => tiers.find((t) => t.id === id)?.name.replace(" Review", "").replace(" Reviewed", "") ?? id;
+  const tierName = (id: string) => tiers.find((t) => t.id === id)?.name.replace(/ Review(ed)?$/, "") ?? id;
   const missing = [
     !status.stripeWebhook && "Stripe webhook",
     !status.trigger && "Trigger.dev",

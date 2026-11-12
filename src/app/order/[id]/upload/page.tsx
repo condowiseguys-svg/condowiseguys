@@ -5,6 +5,9 @@ import { site, tiers } from "@/lib/site";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { Uploader } from "./Uploader";
 
+// Document checks can run here after the response when Trigger.dev is not set up.
+export const maxDuration = 300;
+
 export const metadata: Metadata = { title: "Upload your documents", robots: { index: false } };
 export const dynamic = "force-dynamic";
 

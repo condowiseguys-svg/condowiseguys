@@ -1,8 +1,11 @@
+import { randomUUID } from "node:crypto";
+import { after } from "next/server";
 import { tasks } from "@trigger.dev/sdk";
 import type { deliverReportTask } from "@/trigger/deliver-report";
 import type { processOrderTask } from "@/trigger/process-order";
 import { deliverReport } from "./records";
-import { raiseIssue } from "./events";
+import { logEvent, raiseIssue } from "./events";
+import { runDocumentChecks } from "./processing";
 
 export function jobsConfigured() {
   return Boolean(process.env.TRIGGER_SECRET_KEY);
@@ -11,13 +14,23 @@ export function jobsConfigured() {
 /** Starts processing for one submission. The idempotency key makes repeat calls harmless. */
 export async function startProcessing(orderId: string, submission: number, attemptTag = "") {
   if (!jobsConfigured()) {
-    await raiseIssue({
-      orderId,
-      kind: "processing_failed",
-      message: "Background jobs aren't set up (TRIGGER_SECRET_KEY), so processing did not start.",
-      dedupeKey: `jobs-not-configured:${orderId}:${submission}`,
+    // No Trigger.dev yet: run the checks on the web server once the response has been sent.
+    const runId = `inline:${randomUUID()}`;
+    after(async () => {
+      try {
+        await runDocumentChecks(orderId, submission, runId);
+      } catch (err) {
+        console.error("inline processing failed", err);
+        await logEvent(orderId, "system", "processing_failed", { run: runId });
+        await raiseIssue({
+          orderId,
+          kind: "processing_failed",
+          message: `Processing failed: ${err instanceof Error ? err.message : String(err)}`.slice(0, 500),
+          dedupeKey: `processing-failed:${runId}`,
+        });
+      }
     });
-    return false;
+    return true;
   }
   await tasks.trigger<typeof processOrderTask>(
     "process-order",

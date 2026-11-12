@@ -15,6 +15,9 @@ import {
 } from "../../actions";
 import { STATUS_LABEL, money, when } from "../../format";
 
+// Document checks can run here after the response when Trigger.dev is not set up.
+export const maxDuration = 300;
+
 export const dynamic = "force-dynamic";
 
 const UUID = /^[0-9a-f-]{36}$/i;
