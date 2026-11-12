@@ -61,5 +61,14 @@ export async function createOrder(_prev: OrderFormState, form: FormData): Promis
   }
 
   await logEvent(order.id, "buyer", "order_created", { tier: tier.id, rush, amount_cents: amount });
-  redirect(await startCheckout({ ...order, tier: tier.id, rush, amount_cents: amount, buyer_email: buyerEmail, property_address: propertyAddress }));
+  let paymentUrl: string;
+  try {
+    paymentUrl = await startCheckout({ ...order, tier: tier.id, rush, amount_cents: amount, buyer_email: buyerEmail, property_address: propertyAddress });
+  } catch (e) {
+    console.error("stripe checkout failed", e);
+    // In test mode, show Stripe's reason so setup problems are easy to spot.
+    const detail = isStripeTestMode() && e instanceof Error ? ` (${e.message})` : "";
+    return { error: `We saved your order but could not open the payment page${detail}. Please try again or email us.` };
+  }
+  redirect(paymentUrl);
 }
