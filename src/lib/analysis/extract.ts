@@ -1,0 +1,164 @@
+import { PDFDocument } from "pdf-lib";
+import { extractText, getDocumentProxy } from "unpdf";
+import { z } from "zod/v4";
+import type { ManifestEntry } from "@/lib/ops/records";
+import { askForJson, ocrModel } from "./claude";
+import { mapLimit } from "./pool";
+
+/** One page of the package. `doc` is the file's position in the manifest (0-based). */
+export type PageText = { doc: number; page: number; text: string; source: "text" | "ocr" | "unreadable" };
+
+/** Pages with less real text than this are treated as scans and read by Claude. */
+const MIN_TEXT_CHARS = 80;
+/** Scanned pages sent to Claude per request. */
+const OCR_BATCH = 8;
+/** OCR requests running at the same time. */
+const OCR_PARALLEL = 4;
+
+export function isImageFile(name: string) {
+  return /\.(jpe?g|png)$/i.test(name);
+}
+
+/** Pulls the text layer out of a PDF, one string per page. */
+export async function pdfPageTexts(bytes: Uint8Array): Promise<string[]> {
+  const pdf = await getDocumentProxy(new Uint8Array(bytes));
+  const { text } = await extractText(pdf, { mergePages: false });
+  await pdf.cleanup();
+  return text.map((t) => t.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim());
+}
+
+export function needsOcr(text: string) {
+  return text.replace(/\s+/g, "").length < MIN_TEXT_CHARS;
+}
+
+const OcrSchema = z.object({
+  pages: z.array(
+    z.object({
+      index: z.number().describe("1-based position of the page in the attached PDF"),
+      text: z.string().describe("Full transcription of the page"),
+    }),
+  ),
+});
+
+const OCR_SYSTEM = `You transcribe scanned pages from British Columbia strata (condominium) documents so they can be reviewed later.
+Transcribe every page completely and accurately: headings, body text, numbers, dates, dollar amounts, names of companies, signatures as [signature], stamps as [stamp: text].
+Write tables one row per line with cells separated by " | ". Describe charts or photos in one short bracketed line, including any numbers shown, e.g. [bar chart: CRF balance 2024 $1.2M rising to $3.4M in 2030].
+If a page is blank or unreadable, say so in brackets. Do not summarize and do not add commentary.`;
+
+/** Builds a small PDF holding just the given pages (1-based) of the source PDF. */
+async function subsetPdf(src: PDFDocument, pages: number[]) {
+  const out = await PDFDocument.create();
+  const copied = await out.copyPages(
+    src,
+    pages.map((p) => p - 1),
+  );
+  copied.forEach((p) => out.addPage(p));
+  return out.save();
+}
+
+/**
+ * Reads scanned pages with Claude, a few pages per request. Each batch has its own cost
+ * key, so a retry never double counts.
+ */
+export async function ocrPdfPages(opts: {
+  orderId: string;
+  submission: number;
+  docIndex: number;
+  bytes: Uint8Array;
+  pages: number[];
+}): Promise<Map<number, string>> {
+  const result = new Map<number, string>();
+  if (!opts.pages.length) return result;
+  const src = await PDFDocument.load(opts.bytes, { ignoreEncryption: true, updateMetadata: false });
+
+  const batches: number[][] = [];
+  for (let i = 0; i < opts.pages.length; i += OCR_BATCH) batches.push(opts.pages.slice(i, i + OCR_BATCH));
+
+  await mapLimit(batches, OCR_PARALLEL, async (batch) => {
+    let data: string;
+    try {
+      data = Buffer.from(await subsetPdf(src, batch)).toString("base64");
+    } catch (err) {
+      for (const p of batch) result.set(p, `[page could not be extracted for reading: ${String(err).slice(0, 80)}]`);
+      return;
+    }
+    const answer = await askForJson({
+      orderId: opts.orderId,
+      step: "Read scanned pages",
+      costKey: `claude:ocr:${opts.orderId}:s${opts.submission}:d${opts.docIndex}:p${batch[0]}-${batch[batch.length - 1]}`,
+      schema: OcrSchema,
+      system: OCR_SYSTEM,
+      model: ocrModel(),
+      effort: "low",
+      content: [
+        { type: "document", source: { type: "base64", media_type: "application/pdf", data } },
+        { type: "text", text: `Transcribe all ${batch.length} pages of the attached PDF. Return one entry per page, index 1 to ${batch.length}.` },
+      ],
+    });
+    for (const p of answer.pages) {
+      const real = batch[p.index - 1];
+      if (real !== undefined) result.set(real, p.text.trim());
+    }
+  });
+  return result;
+}
+
+/** Reads an uploaded photo of a page (JPEG or PNG). */
+export async function ocrImage(opts: {
+  orderId: string;
+  submission: number;
+  docIndex: number;
+  bytes: Uint8Array;
+  mediaType: "image/jpeg" | "image/png";
+}) {
+  const answer = await askForJson({
+    orderId: opts.orderId,
+    step: "Read scanned pages",
+    costKey: `claude:ocr:${opts.orderId}:s${opts.submission}:d${opts.docIndex}:img`,
+    schema: OcrSchema,
+    system: OCR_SYSTEM,
+    model: ocrModel(),
+    effort: "low",
+    content: [
+      { type: "image", source: { type: "base64", media_type: opts.mediaType, data: Buffer.from(opts.bytes).toString("base64") } },
+      { type: "text", text: "Transcribe this page. Return one entry with index 1." },
+    ],
+  });
+  return answer.pages.map((p) => p.text).join("\n\n");
+}
+
+/** Every page of one file, with scans read by Claude. */
+export async function extractDocument(opts: {
+  orderId: string;
+  submission: number;
+  docIndex: number;
+  doc: ManifestEntry;
+  bytes: Uint8Array;
+}): Promise<PageText[]> {
+  const { doc, bytes, docIndex } = opts;
+  if (isImageFile(doc.file_name)) {
+    const mediaType = /\.png$/i.test(doc.file_name) ? "image/png" : "image/jpeg";
+    const text = await ocrImage({ ...opts, mediaType });
+    return [{ doc: docIndex, page: 1, text, source: "ocr" }];
+  }
+
+  let texts: string[];
+  try {
+    texts = await pdfPageTexts(bytes);
+  } catch {
+    // No usable text layer at all (e.g. damaged structure): read every page as a scan.
+    const count = doc.page_count ?? (await PDFDocument.load(bytes, { ignoreEncryption: true })).getPageCount();
+    texts = Array.from({ length: count }, () => "");
+  }
+
+  const scanned = texts.map((t, i) => (needsOcr(t) ? i + 1 : 0)).filter(Boolean);
+  const ocr = await ocrPdfPages({ ...opts, pages: scanned });
+  return texts.map((t, i) => {
+    const page = i + 1;
+    if (!needsOcr(t)) return { doc: docIndex, page, text: t, source: "text" as const };
+    const read = ocr.get(page);
+    return read
+      ? { doc: docIndex, page, text: read, source: "ocr" as const }
+      : { doc: docIndex, page, text: "[scanned page that could not be read]", source: "unreadable" as const };
+  });
+}

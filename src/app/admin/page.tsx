@@ -41,7 +41,7 @@ export default async function AdminPage() {
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
         <Stat label="Needs you" value={summary.needsAttention} />
-        <Stat label="Expert reviews" value={summary.inReview} />
+        <Stat label="Waiting for your check" value={summary.inReview} />
         <Stat label="Waiting on buyer" value={summary.waitingOnBuyer} />
         <Stat label="Revenue, 30 days" value={money(summary.revenue30)} note={`${summary.orders30} orders`} />
         <Stat

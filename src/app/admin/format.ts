@@ -19,7 +19,7 @@ export const STATUS_LABEL: Record<string, string> = {
   paid: "Paid, no documents",
   processing: "Processing",
   awaiting_documents: "Waiting on buyer",
-  in_review: "Expert review",
+  in_review: "Waiting for your check",
   approved: "Approved, sending",
   delivered: "Delivered",
   cancelled: "Cancelled",

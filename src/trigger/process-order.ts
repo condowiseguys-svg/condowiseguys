@@ -1,37 +1,62 @@
 import { logger, task, usage } from "@trigger.dev/sdk";
+import { draftReport, routeDraft } from "@/lib/analysis/pipeline";
 import { recordCost } from "@/lib/ops/costs";
-import { raiseIssue } from "@/lib/ops/events";
+import { logEvent, raiseIssue } from "@/lib/ops/events";
 import { runDocumentChecks } from "@/lib/ops/processing";
+import { deliverReportTask } from "./deliver-report";
 
 /**
  * Runs after a buyer submits (or resubmits) their documents.
+ *
+ * 1. Check every file can be opened (unreadable ones go back to the buyer).
+ * 2. Draft the report: read every page (scans by Claude), sort the package into documents,
+ *    review each group against the BC checklist, write the report and save it as a draft.
+ * 3. Standard orders with AUTO_SEND_STANDARD on are approved and emailed; everything else
+ *    moves to "in review" and Brian gets an email.
  *
  * Duplicate protection:
  *  - It is triggered with the idempotency key process-order:<order>:<submission>, so a
  *    double click or a repeated request starts only one run per submission.
  *  - claim_order_processing() lets only that run work on the order; any other run exits.
- *  - Every step writes with its own key (document fingerprints, issues, emails, costs),
- *    so a retried attempt picks up where it left off without repeating side effects.
- *
- * Still to come in the analysis step: split and OCR the PDFs, classify each document,
- * check completeness, review against the BC checklist, draft the report, then hand
- * Expert orders to Brian (in_review) and auto-approve Standard ones.
+ *  - Every step writes with its own key (document fingerprints, saved analysis steps,
+ *    issues, emails, costs, the draft version), so a retried attempt picks up where it
+ *    left off without paying for or repeating finished work.
  */
 export const processOrderTask = task({
   id: "process-order",
   maxDuration: 3600,
-  machine: "small-2x",
+  machine: "medium-1x",
   retry: { maxAttempts: 3 },
   run: async (payload: { orderId: string; submission: number }, { ctx }) => {
-    const result = await runDocumentChecks(payload.orderId, payload.submission, ctx.run.id, ctx.attempt.number === 1);
-    if ("skipped" in result) {
+    const runId = ctx.run.id;
+    const checked = await runDocumentChecks(payload.orderId, payload.submission, runId, ctx.attempt.number === 1);
+    if ("skipped" in checked) {
       logger.log("Another run owns this order, or it is no longer processing. Skipping.", payload);
-      return result;
+      return checked;
     }
-    await recordRunCost(payload.orderId, ctx.run.id);
-    return result;
+    if (checked.status !== "ready_for_analysis") {
+      await recordRunCost(payload.orderId, runId);
+      return checked;
+    }
+
+    const drafted = await draftReport(payload.orderId, payload.submission, runId);
+    if (drafted.status !== "drafted") {
+      logger.log("The order changed while the report was being written. Leaving it alone.", payload);
+      await recordRunCost(payload.orderId, runId);
+      return drafted;
+    }
+    const routed = await routeDraft(payload.orderId, drafted.version.id, drafted.report.rating, drafted.missing);
+    if (routed.approvedVersionId) {
+      await deliverReportTask.trigger(
+        { orderId: payload.orderId, reportVersionId: routed.approvedVersionId },
+        { idempotencyKey: `deliver:${routed.approvedVersionId}`, tags: [`order:${payload.orderId}`] },
+      );
+    }
+    await recordRunCost(payload.orderId, runId);
+    return { status: routed.status, version: drafted.version.version, rating: drafted.report.rating };
   },
   onFailure: async ({ payload, error, ctx }) => {
+    await logEvent(payload.orderId, "system", "processing_failed", { run: ctx.run.id });
     await raiseIssue({
       orderId: payload.orderId,
       kind: "processing_failed",

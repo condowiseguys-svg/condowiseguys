@@ -88,12 +88,12 @@ export async function rerunProcessing(orderId: string) {
     const db = supabaseAdmin();
     const { data: order } = await db
       .from("orders")
-      .update({ processing_run_id: null, processing_started_at: null })
+      .update({ status: "processing", processing_run_id: null, processing_started_at: null })
       .eq("id", orderId)
-      .eq("status", "processing")
+      .in("status", ["processing", "in_review"])
       .select("submission_count")
       .maybeSingle();
-    if (!order) throw new Error("Only orders that are processing can be re-run.");
+    if (!order) throw new Error("Only orders that are processing or waiting for your check can be re-run.");
     await resolveIssues({ orderId, kind: "processing_failed" }, "admin", "Processing re-run");
     await logEvent(orderId, "admin", "processing_rerun", {});
     await startProcessing(orderId, order.submission_count as number, `:rerun-${Date.now()}`);
