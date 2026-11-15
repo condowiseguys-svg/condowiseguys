@@ -65,11 +65,12 @@ export const REVIEW_GROUPS: ReviewGroup[] = [
     id: "form_b",
     title: "Form B and the strata lot",
     types: ["form_b", "form_j", "strata_plan"],
-    checks: `- Go through the Form B line by line: monthly strata fee for this lot, amounts the seller owes the strata, agreements to sell or lease common property, bylaw amendments not yet filed, resolutions passed by 3/4 vote not yet filed, any approved or proposed special levy (amount and this lot's share), any amounts the strata has committed to spend from the contingency reserve fund (CRF), CRF balance, court or Civil Resolution Tribunal (CRT) actions, notices or work orders from a government authority, parking and storage allocated to this lot, depreciation report on file, electrical planning report on file, rental restrictions, age restrictions, and anything attached.
+    checks: `- Go through the Form B line by line, using its own item numbers or letters: monthly strata fee for this lot, amounts the seller owes the strata, agreements to sell or lease common property, bylaw amendments not yet filed, resolutions passed by 3/4 vote not yet filed, any approved or proposed special levy (amount and this lot's share), any amounts the strata has committed to spend from the contingency reserve fund (CRF), CRF balance, court or Civil Resolution Tribunal (CRT) actions, notices or work orders from a government authority, parking and storage allocated to this lot, depreciation report on file, electrical planning report on file, age restrictions, and anything attached. The rental item was repealed on November 24, 2022 and Form J is no longer needed for a purchase decision: do not flag either as missing.
+- If an item refers to an attachment (e.g. a Legal Disclosure), look for it in the package, including scanned pages, and say where it is.
 - Note the date of the Form B. A Form B more than a few weeks old may be out of date.
 - Find this strata lot's unit entitlement and the total unit entitlement of the strata (Schedule of Unit Entitlement or Form B attachments), so levies can be estimated for the lot. Report both numbers if found.
 - Check that the strata plan, lot number and address match the order. Note whether the strata has sections (e.g. residential and commercial) and whether section records were provided.
-- For Form J or rental disclosure: record what it says about rentals.`,
+- For Form J or a rental disclosure, if present: record what it says.`,
   },
   {
     id: "financial",
@@ -77,7 +78,9 @@ export const REVIEW_GROUPS: ReviewGroup[] = [
     types: ["financial_statements", "budget"],
     checks: `- Operating results: surplus or deficit for the year, and the main lines over or under budget.
 - Strata fee changes: the increase from last year to this year, and any signs that a further increase is coming.
-- Contingency reserve fund: balance, annual contribution, and whether the contribution matches the depreciation report's recommendation. Contributions below 10% of the operating budget are a warning sign.
+- Contingency reserve fund: balance, annual contribution, and whether the contribution matches the depreciation report's funding models. BC requires at least 10% of the total amount budgeted to the operating fund; state the base you compared against.
+- When comparing actual results to budget, say whether the budget figure is year-to-date or full-year.
+- Fee schedules list each strata lot's unit entitlement and the total unit entitlement (residential, commercial and combined). Report this lot's and the totals.
 - Money moved from the CRF to cover operating costs, borrowing, or loans.
 - Arrears: owners owing money, and any large receivables.
 - Insurance premium and deductible trends shown in the budget.
@@ -92,7 +95,8 @@ export const REVIEW_GROUPS: ReviewGroup[] = [
 - Building age and type, and the main components near the end of their life (roof, building envelope, windows, balconies, piping, elevators, parkade membrane, mechanical and electrical).
 - The funding scenarios: recommended annual CRF contribution vs what the strata actually contributes.
 - Every major project forecast in the next 10 years with its year and cost, and any special levies the report expects. Give the yearly totals and the 10-year total.
-- Whether the report says levies are likely or unavoidable under current funding.
+- Whether the report says levies are likely or unavoidable under current funding, and the annual contribution the model assumes (compare it with the current budget if known).
+- Whether the report is final or marked draft, and any conflicting dates.
 - If the package also contains an older depreciation report, use the newest and say which is older.`,
   },
   {
@@ -109,6 +113,7 @@ export const REVIEW_GROUPS: ReviewGroup[] = [
 - Governance: council resignations, failed quorums, property manager changes, owners unable to fill council.
 - Warranty (2-5-10 home warranty) items and deadlines for newer buildings.
 - Anything about this specific unit, its floor, or its stack.
+- Fee schedules attached to AGM minutes list each strata lot's unit entitlement and the total unit entitlement. Report this lot's entitlement and the totals.
 - Note the date range the minutes cover and any months that appear to be missing.`,
   },
   {
@@ -146,7 +151,7 @@ export const REVIEW_GROUPS: ReviewGroup[] = [
     id: "other",
     title: "Legal matters, notices and other documents",
     types: ["legal", "correspondence", "other"],
-    checks: `- Court or CRT actions, liens, judgments, or claims involving the strata or this unit.
+    checks: `- Court or CRT actions, liens, judgments, or claims involving the strata or this unit: file numbers, parties, status, and whether the minutes record how they ended.
 - Notices from the strata, the city, the fire department, or WorkSafeBC; work orders.
 - Anything else a buyer should know before removing subjects.
 - Ignore cover pages, blank pages, and marketing material.`,

@@ -1,4 +1,6 @@
-import { PDFDocument } from "pdf-lib";
+// @cantoo/pdf-lib is a pdf-lib fork that can decrypt. Many strata packages are "secured"
+// PDFs; copying their pages with plain pdf-lib produces blank pages.
+import { PDFDocument } from "@cantoo/pdf-lib";
 import { extractText, getDocumentProxy } from "unpdf";
 import { z } from "zod/v4";
 import type { ManifestEntry } from "@/lib/ops/records";
@@ -8,8 +10,12 @@ import { mapLimit } from "./pool";
 /** One page of the package. `doc` is the file's position in the manifest (0-based). */
 export type PageText = { doc: number; page: number; text: string; source: "text" | "ocr" | "unreadable" };
 
-/** Pages with less real text than this are treated as scans and read by Claude. */
-const MIN_TEXT_CHARS = 80;
+/**
+ * Pages with less real text than this are treated as scans and read by Claude. Set high
+ * enough that a scanned page carrying only a filing header (e.g. Land Title Office strata
+ * plan pages) is still read.
+ */
+const MIN_TEXT_CHARS = 200;
 /** Scanned pages sent to Claude per request. */
 const OCR_BATCH = 8;
 /** OCR requests running at the same time. */
@@ -45,6 +51,16 @@ Transcribe every page completely and accurately: headings, body text, numbers, d
 Write tables one row per line with cells separated by " | ". Describe charts or photos in one short bracketed line, including any numbers shown, e.g. [bar chart: CRF balance 2024 $1.2M rising to $3.4M in 2030].
 If a page is blank or unreadable, say so in brackets. Do not summarize and do not add commentary.`;
 
+/** Opens a PDF so its pages can be copied, decrypting secured PDFs (empty user password). */
+export async function openForCopy(bytes: Uint8Array) {
+  try {
+    return await PDFDocument.load(bytes, { password: "", updateMetadata: false });
+  } catch {
+    // Not encrypted in a way the decryptor understands: copy as is.
+    return PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false });
+  }
+}
+
 /** Builds a small PDF holding just the given pages (1-based) of the source PDF. */
 async function subsetPdf(src: PDFDocument, pages: number[]) {
   const out = await PDFDocument.create();
@@ -69,7 +85,7 @@ export async function ocrPdfPages(opts: {
 }): Promise<Map<number, string>> {
   const result = new Map<number, string>();
   if (!opts.pages.length) return result;
-  const src = await PDFDocument.load(opts.bytes, { ignoreEncryption: true, updateMetadata: false });
+  const src = await openForCopy(opts.bytes);
 
   const batches: number[][] = [];
   for (let i = 0; i < opts.pages.length; i += OCR_BATCH) batches.push(opts.pages.slice(i, i + OCR_BATCH));

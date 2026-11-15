@@ -5,10 +5,15 @@ import { RECORDS_BUCKET, supabaseAdmin } from "@/lib/supabase/admin";
  * A retried run reads the saved result instead of paying Claude to redo the step, and the
  * files stay as a record of what the report was based on.
  *
- * Paths: <order id>/analysis/s<submission>/<step>.json
+ * Paths: <order id>/analysis/s<submission>/v<pipeline version>/<step>.json
+ *
+ * Bump PIPELINE_VERSION when a change means saved steps should not be reused (e.g. page reading was fixed),
+ * so "Write a new draft" redoes everything instead of reusing old results.
  */
+export const PIPELINE_VERSION = 2;
+
 export function stepPath(orderId: string, submission: number, step: string) {
-  return `${orderId}/analysis/s${submission}/${step}.json`;
+  return `${orderId}/analysis/s${submission}/v${PIPELINE_VERSION}/${step}.json`;
 }
 
 export async function readStep<T>(path: string): Promise<T | null> {

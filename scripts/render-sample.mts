@@ -27,6 +27,12 @@ const report: Report = {
   rating: "amber",
   rating_headline: "some costs to plan for",
   summary: "SAMPLE TEXT ONLY. The strata appears well run, but the depreciation report forecasts roof and piping work in the next five years that the reserve fund can’t fully cover. Expect a special levy of roughly $8,000–$12,000 for this unit ≈ 2027.",
+  priorities: [
+    "Get written confirmation of any approved or proposed special levy and this lot's share.",
+    "Confirm the current monthly fee and any residential-section charges.",
+    "Ask what the CRT dispute in the Legal Disclosure is and whether it is closed.",
+    "Have your insurance broker confirm cover for the $75,000 water deductible.",
+  ],
   top_findings: [
     item("Depreciation report forecasts $4.2M of work by 2029 against a $1.1M reserve.", "red", [429, 430, 431, 433]),
     item("Water damage deductible is $50,000 and can be charged back to the owner.", "amber", [403]),

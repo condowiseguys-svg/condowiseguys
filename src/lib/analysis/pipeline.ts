@@ -81,6 +81,9 @@ export async function draftReport(orderId: string, submission: number, runId: st
   }
   const pages = numberPages(perDoc);
   const ocrPages = pages.filter((p) => p.source === "ocr").length;
+  const cite = makeCiter(pages, manifest);
+  const scanned = cite(pages.filter((p) => p.source !== "text").map((p) => p.n), Infinity);
+  const unreadable = cite(pages.filter((p) => p.source === "unreadable").map((p) => p.n), Infinity);
   await logEvent(orderId, "system", "analysis_pages_read", { pages: pages.length, scanned: ocrPages, files: manifest.length });
 
   // 2. Which documents are in the package.
@@ -114,7 +117,17 @@ export async function draftReport(orderId: string, submission: number, runId: st
 
   // 4. Write the report.
   const report = await cachedStep<Report>(path(`report-${runSlug}`), () =>
-    composeReport({ orderId, submission, runSlug, order, segments, reviews, missing }),
+    composeReport({
+      orderId,
+      submission,
+      runSlug,
+      order,
+      segments,
+      reviews,
+      missing,
+      today: new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric", timeZone: "America/Vancouver" }),
+      unreadablePages: unreadable,
+    }),
   );
 
   // 5. Draw the PDF and save it as a draft version. The draft date is fixed by the saved
@@ -136,7 +149,7 @@ export async function draftReport(orderId: string, submission: number, runId: st
       ocrPages,
       contactEmail: contactEmail(),
     },
-    makeCiter(pages, manifest),
+    cite,
   );
 
   if (!(await stillOurs(orderId, runId, submission))) return { status: "superseded" as const };
@@ -147,7 +160,7 @@ export async function draftReport(orderId: string, submission: number, runId: st
     sourceKey: `pipeline:${runId}`,
     model: analysisModel(),
   });
-  return { status: "drafted" as const, version, report, missing };
+  return { status: "drafted" as const, version, report, missing, scanned, unreadable };
 }
 
 /**
@@ -159,6 +172,7 @@ export async function routeDraft(
   versionId: string,
   rating: string,
   missing: string[],
+  pagesToCheck: { scanned: string; unreadable: string } = { scanned: "", unreadable: "" },
 ): Promise<{ status: string; approvedVersionId: string | null }> {
   const order = await loadOrder(orderId);
   if (order.status !== "processing") return { status: order.status, approvedVersionId: null };
@@ -190,11 +204,17 @@ export async function routeDraft(
           `Overall rating: <strong>${escapeHtml(rating)}</strong>.${
             missing.length ? ` Not found in the package: ${missing.map(escapeHtml).join(", ")}.` : ""
           }`,
-          "Open the order to read the draft, then approve and send it, or ask the buyer for more documents.",
+          "Before approving, please check by hand:",
+          `&bull; every top finding against the page it cites;<br>&bull; the scanned pages, which were read by text recognition: ${escapeHtml(
+            pagesToCheck.scanned || "none",
+          )}${pagesToCheck.unreadable ? `;<br>&bull; <strong>pages that could not be read at all: ${escapeHtml(pagesToCheck.unreadable)}</strong>` : ""}.`,
+          "Then approve and send it, write a new draft, or ask the buyer for more documents.",
         ],
         { href: link, label: "Open the order" },
       ),
-      text: `The draft report for ${order.property_address} is ready. Rating: ${rating}.\n${link}\n`,
+      text: `The draft report for ${order.property_address} is ready. Rating: ${rating}.\nCheck the top findings against their pages, and the scanned pages: ${
+        pagesToCheck.scanned || "none"
+      }${pagesToCheck.unreadable ? `\nCould not be read: ${pagesToCheck.unreadable}` : ""}\n${link}\n`,
     });
   }
   return { status: "in_review", approvedVersionId: null };

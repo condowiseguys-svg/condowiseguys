@@ -22,7 +22,8 @@ export function makeCiter(pages: PackagePage[], manifest: ManifestEntry[]) {
     if (!p) return null;
     return { doc: p.doc, page: p.page };
   };
-  return (ns: number[]): string => {
+  /** `max` limits how many ranges are listed before "and others". */
+  return (ns: number[], max = 4): string => {
     const valid = [...new Set(ns)].filter((n) => byN.has(n)).sort((a, b) => a - b);
     if (!valid.length) return "";
     // Collapse runs (12, 13, 14 -> 12-14) within the same file.
@@ -38,8 +39,8 @@ export function makeCiter(pages: PackagePage[], manifest: ManifestEntry[]) {
       parts.push(`${prefix}p. ${range}`);
       i = j + 1;
     }
-    const shown = parts.slice(0, 4).join(", ");
-    return parts.length > 4 ? `${shown} and others` : shown;
+    const shown = parts.slice(0, max).join(", ");
+    return parts.length > max ? `${shown} and others` : shown;
   };
 }
 

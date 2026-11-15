@@ -45,7 +45,10 @@ export const processOrderTask = task({
       await recordRunCost(payload.orderId, runId);
       return drafted;
     }
-    const routed = await routeDraft(payload.orderId, drafted.version.id, drafted.report.rating, drafted.missing);
+    const routed = await routeDraft(payload.orderId, drafted.version.id, drafted.report.rating, drafted.missing, {
+      scanned: drafted.scanned,
+      unreadable: drafted.unreadable,
+    });
     if (routed.approvedVersionId) {
       await deliverReportTask.trigger(
         { orderId: payload.orderId, reportVersionId: routed.approvedVersionId },
