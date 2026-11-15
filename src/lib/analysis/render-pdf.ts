@@ -235,6 +235,11 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
   L.y -= 24;
   L.heading("Executive summary");
   L.text(report.summary, { size: 10.5, gap: 8 });
+  if (report.priorities?.length) {
+    L.subheading("Before you remove subjects");
+    report.priorities.forEach((p, i) => L.text(`${i + 1}. ${p}`, { x: M + 12, gap: 3 }));
+    L.y -= 6;
+  }
   L.subheading("Top findings");
   report.top_findings.forEach((f) => L.item(f.text, f.risk, cite(f.pages)));
 

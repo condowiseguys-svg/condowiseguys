@@ -46,7 +46,8 @@ Types:
 - form_j: rental disclosure statements
 - legal: court or Civil Resolution Tribunal documents, liens, legal letters
 - correspondence: notices, newsletters, letters to owners
-- other: anything else (cover pages, title searches, blank pages, property disclosure statements)`;
+- other: anything else (cover pages, title searches, blank pages, property disclosure statements)
+A page whose text says it is a scanned page that could not be read is NOT blank: give such pages their own document titled "Unreadable scanned pages" unless the pages around them show what they belong to.`;
 
 /** Pages sorted per request. Bigger packages are sorted in parts. */
 const CLASSIFY_CHUNK = 300;

@@ -57,7 +57,10 @@ Rules:
 - Give amounts in dollars as written in the documents.
 - Focus on what affects the buyer's costs, risks, and use of the unit. Skip routine items that do not matter to a buyer.
 - Prefer the newest information. When documents conflict, say which is newer.
-- Be balanced: include reassuring (green) findings too, not only problems.`;
+- Be balanced: include reassuring (green) findings too, not only problems.
+- A page reading "[scanned page that could not be read]" is not blank: say it could not be read. Read transcribed scanned pages as carefully as the rest.
+- Separate projections (e.g. a depreciation report's funding model) from decisions owners actually made.
+- When comparing results to a budget, say whether the budget figure is year-to-date or full-year.`;
 
 /** Pages for each group, split so that one request stays well inside the context window. */
 export function groupChunks(group: ReviewGroup, segments: Segment[], pages: PackagePage[], maxChars = 400_000) {

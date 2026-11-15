@@ -105,9 +105,14 @@ Brian can upload a report by hand.
    findings, key numbers, special levies with this unit's estimated share, Form B line by
    line, a section per area, missing documents and questions to ask.
 5. **Draw the PDF** (`render-pdf.ts`) and save it as a draft report version.
+   Page one also gives the buyer up to four things to do before removing subjects.
+   Forecast levies are described as projections with their assumptions; the unit's share
+   uses the unit entitlement from the fee schedule and is labelled an illustration.
 6. **Route it.** Expert orders, and Standard orders while `AUTO_SEND_STANDARD` is off, move
    to "Waiting for your check" and Brian gets an email (to `ADMIN_EMAIL`, or the `EMAIL_FROM`
-   address). With `AUTO_SEND_STANDARD=true`, Standard drafts are approved and emailed
+   address). The email lists the scanned pages and any pages that could not be read:
+   check those and every top finding against its cited page before approving. With
+   `AUTO_SEND_STANDARD=true`, Standard drafts are approved and emailed
    straight away.
 
 Every finished step is saved in the `order-records` bucket under
