@@ -13,7 +13,7 @@ and what happens when something goes wrong. The admin dashboard is at `/admin`.
 | Paid, no documents | Paid, waiting for uploads | Buyer |
 | Processing | Documents submitted; checks and analysis running | System |
 | Waiting on buyer | We asked for replacement or missing documents | Buyer |
-| Expert review | Expert draft ready for Brian | Brian |
+| Waiting for your check | Draft report ready for Brian (Expert orders, and Standard while auto-send is off) | Brian |
 | Approved, sending | Report approved and archived; email going out | System |
 | Delivered | Report emailed | Done |
 | Refunded | Fully refunded in Stripe | Done |
@@ -86,6 +86,44 @@ order within 2 days of its subject removal date.
 **Policy to confirm with Brian:** how long to wait on a buyer before offering a refund
 (suggested: a reminder at 3 days, refund offer at 7 days).
 
+## Automatic report writer
+
+Runs in the Trigger.dev task `process-order` after the document checks pass
+(`src/lib/analysis/`). It needs Trigger.dev: a large package takes 10 to 30 minutes, longer
+than a Vercel function may run. Without Trigger.dev, the site still checks the files and
+Brian can upload a report by hand.
+
+1. **Read every page** (`extract.ts`). Text comes from the PDF itself. Pages with almost no
+   text are scans; Claude reads those, 8 pages per request.
+2. **Sort the package** (`classify.ts`). Claude splits it into documents (Form B, each set of
+   minutes, depreciation report, bylaws, ...), 300 pages per request. Any required item not
+   found is listed as missing in the report and in Brian's email.
+3. **Review** (`review.ts`, checklist in `checklist.ts`). Each group of documents is checked
+   against its BC checklist. Edit the `checks` text in `checklist.ts` to change what the
+   writer looks for.
+4. **Write** (`compose.ts`). Claude turns the notes into the report: rating, summary, top
+   findings, key numbers, special levies with this unit's estimated share, Form B line by
+   line, a section per area, missing documents and questions to ask.
+5. **Draw the PDF** (`render-pdf.ts`) and save it as a draft report version.
+6. **Route it.** Expert orders, and Standard orders while `AUTO_SEND_STANDARD` is off, move
+   to "Waiting for your check" and Brian gets an email (to `ADMIN_EMAIL`, or the `EMAIL_FROM`
+   address). With `AUTO_SEND_STANDARD=true`, Standard drafts are approved and emailed
+   straight away.
+
+Every finished step is saved in the `order-records` bucket under
+`<order>/analysis/s<submission>/`, so a retry continues where it stopped without paying
+Claude again. "Re-run processing" reuses the reading, sorting and review notes and writes a
+fresh report.
+
+Every fact in the report cites package page numbers. When the buyer uploaded several files,
+pages are cited as "file name p. N".
+
+Settings (Trigger.dev env): `ANALYSIS_MODEL` (default `claude-opus-5-5`), `OCR_MODEL`
+(defaults to the same), `AUTO_SEND_STANDARD`, `ADMIN_EMAIL`.
+
+To check the PDF layout without calling Claude:
+`npx tsx scripts/render-sample.mts <package.pdf> out.pdf`.
+
 ## Cost per order
 Recorded automatically, each once:
 - Stripe fee (CAD) when payment succeeds.
@@ -101,6 +139,9 @@ The dashboard shows cost and margin per order in CAD. US dollar amounts use `USD
    `EMAIL_FROM` (e.g. `Condo Wise Guys <reports@send.condowiseguys.com>`), optional
    `EMAIL_REPLY_TO`, `NEXT_PUBLIC_SITE_URL`, optional `USD_TO_CAD`.
 3. Trigger.dev project env (Production): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
-   `RESEND_API_KEY`, `EMAIL_FROM`, `NEXT_PUBLIC_SITE_URL`.
+   `RESEND_API_KEY`, `EMAIL_FROM`, `NEXT_PUBLIC_SITE_URL`, `ANTHROPIC_API_KEY`. The easiest
+   way is Trigger.dev Settings > Connect GitHub, then Connect Vercel: Trigger.dev then copies
+   these from Vercel, puts `TRIGGER_SECRET_KEY` into Vercel, and redeploys the tasks on every
+   push to `main`.
 4. Stripe webhook: add the events `checkout.session.async_payment_failed`,
    `checkout.session.expired`, `charge.refunded`, `charge.dispute.created` to the endpoint.

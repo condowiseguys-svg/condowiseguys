@@ -136,9 +136,9 @@ export default async function AdminOrderPage({
           </ul>
         )}
         <div className="mt-4 flex flex-wrap gap-2">
-          {order.status === "processing" && (
+          {(order.status === "processing" || order.status === "in_review") && (
             <form action={rerunProcessing.bind(null, id)}>
-              <button className={secondary}>Re-run processing</button>
+              <button className={secondary}>{order.status === "in_review" ? "Write a new draft" : "Re-run processing"}</button>
             </form>
           )}
           {order.status === "approved" && order.approved_report_id && (

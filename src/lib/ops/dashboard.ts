@@ -37,7 +37,7 @@ export function attentionFor(o: DashboardOrder, openIssues: { kind: string; mess
   for (const i of openIssues.filter((i) => !i.buyer_visible)) {
     out.push({ level: i.kind === "dispute" || i.kind === "delivery_failed" ? "urgent" : "action", reason: i.message });
   }
-  if (o.status === "in_review") out.push({ level: "action", reason: "Expert review is waiting for you" });
+  if (o.status === "in_review") out.push({ level: "action", reason: "A draft report is waiting for your check" });
   if (o.status === "processing" && o.documents_checked_at)
     out.push({ level: "action", reason: "Documents checked and ready for the report" });
   if (o.status === "processing" && !o.documents_checked_at && since(o.submitted_at) > 2 * HOUR)
