@@ -111,7 +111,7 @@ Brian can upload a report by hand.
    straight away.
 
 Every finished step is saved in the `order-records` bucket under
-`<order>/analysis/s<submission>/`, so a retry continues where it stopped without paying
+`<order>/analysis/s<submission>/v<version>/`, so a retry continues where it stopped without paying
 Claude again. "Re-run processing" reuses the reading, sorting and review notes and writes a
 fresh report.
 
