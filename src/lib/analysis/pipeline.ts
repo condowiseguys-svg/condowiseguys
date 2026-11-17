@@ -2,6 +2,7 @@ import { logEvent } from "@/lib/ops/events";
 import { emailHtml, escapeHtml, sendEmailOnce } from "@/lib/ops/email";
 import { missingRequired } from "@/lib/ops/package-checklist";
 import { approveReportVersion, buildManifest, createReportVersion } from "@/lib/ops/records";
+import { adminEmail } from "@/lib/ops/notify";
 import { siteUrl } from "@/lib/ops/urls";
 import { DOCUMENTS_BUCKET, supabaseAdmin } from "@/lib/supabase/admin";
 import { cachedStep, stepPath } from "./cache";
@@ -190,7 +191,7 @@ export async function routeDraft(
     .select("id");
   if (moved?.length) {
     await logEvent(orderId, "system", "ready_for_review", { versionId, rating, missing });
-    const adminTo = process.env.ADMIN_EMAIL || contactEmail();
+    const adminTo = adminEmail();
     const link = `${siteUrl()}/admin/orders/${orderId}`;
     await sendEmailOnce({
       key: `review-ready:${versionId}`,

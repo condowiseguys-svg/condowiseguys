@@ -47,6 +47,14 @@ export async function raiseIssue(issue: {
   if (error) throw error;
   if (data && data.length > 0) {
     await logEvent(issue.orderId, "system", "issue_raised", { kind: issue.kind, message: issue.message });
+    // Imported here to avoid a circular import (email -> events).
+    const { notifyAdmin } = await import("./notify");
+    await notifyAdmin({
+      key: `issue:${issue.dedupeKey}`,
+      orderId: issue.orderId,
+      subject: "Order needs attention",
+      lines: [`<strong>${issue.kind.replace(/_/g, " ")}</strong>: ${issue.message.replace(/[<>&]/g, "")}`],
+    });
   }
 }
 

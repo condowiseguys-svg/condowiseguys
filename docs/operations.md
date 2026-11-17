@@ -109,8 +109,8 @@ Brian can upload a report by hand.
    Forecast levies are described as projections with their assumptions; the unit's share
    uses the unit entitlement from the fee schedule and is labelled an illustration.
 6. **Route it.** Expert orders, and Standard orders while `AUTO_SEND_STANDARD` is off, move
-   to "Waiting for your check" and Brian gets an email (to `ADMIN_EMAIL`, or the `EMAIL_FROM`
-   address). The email lists the scanned pages and any pages that could not be read:
+   to "Waiting for your check" and Brian gets an email (to `ADMIN_EMAIL`, or
+   info@condowiseguys.com when that isn't set). The email lists the scanned pages and any pages that could not be read:
    check those and every top finding against its cited page before approving. With
    `AUTO_SEND_STANDARD=true`, Standard drafts are approved and emailed
    straight away.
@@ -125,6 +125,14 @@ pages are cited as "file name p. N".
 
 Settings (Trigger.dev env): `ANALYSIS_MODEL` (default `claude-opus-5-5`), `OCR_MODEL`
 (defaults to the same), `AUTO_SEND_STANDARD`, `ADMIN_EMAIL`.
+
+### Emails to Brian
+
+Brian is emailed (to `ADMIN_EMAIL`, default info@condowiseguys.com) when an order is paid,
+when the buyer submits or resubmits documents, when a draft is ready for his check, and
+whenever a new issue is raised (failed payment, unreadable file, failed processing or
+delivery, dispute). Each is sent once. Emails go out only where `RESEND_API_KEY` and
+`EMAIL_FROM` are set: in Vercel for payments and uploads, and in Trigger.dev for processing.
 
 To check the PDF layout without calling Claude:
 `npx tsx scripts/render-sample.mts <package.pdf> out.pdf`.
