@@ -2,6 +2,7 @@ import "server-only";
 import type Stripe from "stripe";
 import { recordCost } from "@/lib/ops/costs";
 import { emailHtml, escapeHtml, sendEmailOnce } from "@/lib/ops/email";
+import { notifyAdmin } from "@/lib/ops/notify";
 import { logEvent, raiseIssue, resolveIssues } from "@/lib/ops/events";
 import { payLink } from "@/lib/ops/urls";
 import { stripe } from "@/lib/stripe";
@@ -64,6 +65,12 @@ export async function markPaidFromSession(session: Stripe.Checkout.Session) {
     await logEvent(orderId, "stripe", "paid", { session: session.id, amount: session.amount_total });
     await resolveIssues({ orderId }, "stripe", "Payment succeeded");
     if (paymentIntent) await recordStripeFee(orderId, paymentIntent);
+    await notifyAdmin({
+      key: `paid:${session.id}`,
+      orderId,
+      subject: "New paid order",
+      lines: [`Paid ${((session.amount_total ?? 0) / 100).toFixed(2)} ${(session.currency ?? "cad").toUpperCase()}. The buyer can now upload documents.`],
+    });
   }
   return true;
 }

@@ -1,5 +1,6 @@
 "use server";
 
+import { notifyAdmin } from "@/lib/ops/notify";
 import { logEvent, resolveIssues } from "@/lib/ops/events";
 import { startProcessing } from "@/lib/ops/jobs";
 import { getOrderWithToken, type OrderRow } from "@/lib/orders";
@@ -96,6 +97,12 @@ export async function submitDocuments(orderId: string, token: string): Promise<{
     documents: count,
   });
   await resolveIssues({ orderId: order.id, buyerVisibleOnly: true }, "buyer", "Buyer resubmitted documents");
+  await notifyAdmin({
+    key: `submitted:${order.id}:${submission}`,
+    orderId: order.id,
+    subject: order.status === "paid" ? "Documents received" : "Documents resubmitted",
+    lines: [`${count} document${count === 1 ? "" : "s"} uploaded. Processing has started.`],
+  });
 
   try {
     await startProcessing(order.id, submission as number);
