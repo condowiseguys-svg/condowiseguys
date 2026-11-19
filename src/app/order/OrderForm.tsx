@@ -119,7 +119,13 @@ export function OrderForm({
         <input type="checkbox" name="agree" required className="mt-1 h-4 w-4" />
         <span>
           I understand the report is a review of the strata documents, not legal advice, a home
-          inspection or an appraisal.
+          inspection or an appraisal. I agree that Condo Wise Guys may use my information and
+          documents to prepare my review, and that they may be processed and stored in Canada and
+          the United States by its service providers, as described in the{" "}
+          <a href="/privacy" target="_blank" className="underline">
+            privacy policy
+          </a>
+          .
         </span>
       </label>
 

@@ -21,6 +21,7 @@ export function SiteFooter() {
           <Link href="/sample-report" className="block hover:text-white">Sample report</Link>
           <Link href="/#pricing" className="block hover:text-white">Pricing</Link>
           <Link href="/#faq" className="block hover:text-white">Questions</Link>
+          <Link href="/privacy" className="block hover:text-white">Privacy</Link>
         </div>
         <div className="text-sm leading-7">
           <p className="font-semibold text-white">Contact</p>
