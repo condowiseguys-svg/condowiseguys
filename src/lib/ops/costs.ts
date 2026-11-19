@@ -54,6 +54,8 @@ export type ClaudeUsage = {
   output_tokens: number;
   cache_read_input_tokens?: number | null;
   cache_creation_input_tokens?: number | null;
+  /** "us" when the request was kept on US servers, which Anthropic bills at 1.1x. */
+  inference_geo?: string | null;
 };
 
 export function claudeCostUsdCents(model: string, usage: ClaudeUsage) {
@@ -65,7 +67,7 @@ export function claudeCostUsdCents(model: string, usage: ClaudeUsage) {
       (usage.cache_read_input_tokens ?? 0) * p.cacheRead +
       (usage.cache_creation_input_tokens ?? 0) * p.cacheWrite) /
     1_000_000;
-  return dollars * 100;
+  return dollars * 100 * (usage.inference_geo === "us" ? 1.1 : 1);
 }
 
 /** Call after every Claude request in the pipeline, with a key unique to that step. */

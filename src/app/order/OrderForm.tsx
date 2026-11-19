@@ -25,6 +25,13 @@ export function OrderForm({
 
   return (
     <form action={action} className="space-y-8">
+      {/* Spam trap: hidden from people, but simple bots fill in every field. */}
+      <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+        <label>
+          Leave this empty
+          <input type="text" name="company_website" tabIndex={-1} autoComplete="off" defaultValue="" />
+        </label>
+      </div>
       {testMode && (
         <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-risk-amber ring-1 ring-amber-200">
           Test mode: no real charge. Use card 4242 4242 4242 4242, any future date and any CVC.
