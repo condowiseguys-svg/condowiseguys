@@ -7,8 +7,9 @@ export const site = {
   tagline: "BC strata document reviews, in plain English",
   /**
    * Postal mailing address only: there is no walk-in office. It has been the business address
-   * for 26 years and is how the business is listed on Google, so keep it written the same way. Canada's anti-spam law (CASL) requires one in any email that
-   * promotes a service, so the DreamHomeGroup.ca line in report emails stays off until this is set.
+   * for 26 years and is how the business is listed on Google, so keep it written the same way.
+   * Canada's anti-spam law (CASL) requires one in any email that promotes a service, so the
+   * DreamHomeGroup.ca line in report emails stays off while this is null.
    */
   mailingAddress: "9-3151 Lakeshore Road, #199, Kelowna, BC V1W 3S9" as string | null,
 };
