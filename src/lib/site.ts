@@ -9,7 +9,7 @@ export const site = {
    * Postal mailing address. Canada's anti-spam law (CASL) requires one in any email that
    * promotes a service, so the DreamHomeGroup.ca line in report emails stays off until this is set.
    */
-  mailingAddress: null as string | null,
+  mailingAddress: "9-3151 Lakeshore Road, #199, Kelowna, BC V1W 3S9" as string | null,
 };
 
 /**
