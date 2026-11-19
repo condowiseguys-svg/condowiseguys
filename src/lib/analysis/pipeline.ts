@@ -1,5 +1,5 @@
 import { logEvent } from "@/lib/ops/events";
-import { emailHtml, escapeHtml, sendEmailOnce } from "@/lib/ops/email";
+import { emailFrom, emailHtml, escapeHtml, sendEmailOnce } from "@/lib/ops/email";
 import { missingRequired } from "@/lib/ops/package-checklist";
 import { approveReportVersion, buildManifest, createReportVersion } from "@/lib/ops/records";
 import { adminEmail } from "@/lib/ops/notify";
@@ -31,8 +31,8 @@ export function autoSendStandard() {
 }
 
 function contactEmail() {
-  const from = process.env.EMAIL_FROM ?? "";
-  return from.match(/<([^>]+)>/)?.[1] ?? (from.includes("@") ? from.trim() : "report@condowiseguys.com");
+  const from = emailFrom();
+  return from.match(/<([^>]+)>/)?.[1] ?? from;
 }
 
 async function loadOrder(orderId: string) {
