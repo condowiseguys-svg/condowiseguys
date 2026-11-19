@@ -63,6 +63,16 @@ export const ReportSchema = z.object({
   ),
   missing_documents: z.array(z.object({ document: z.string(), why_it_matters: z.string() })),
   questions: z.array(z.string()).describe("Questions to ask the strata manager or seller, most important first, at most 10"),
+  service_signals: z
+    .object({
+      depreciation_report: z
+        .enum(["current", "out_of_date", "not_found", "unknown"])
+        .describe("State of the strata's depreciation report, by the rule in the instructions"),
+      insurance_appraisal: z
+        .enum(["current", "out_of_date", "not_found", "unknown"])
+        .describe("State of the replacement cost (insurance) appraisal, by the rule in the instructions"),
+    })
+    .describe("Two status flags used to suggest related services at the end of the report. They are not shown to the buyer as findings."),
 });
 export type Report = z.infer<typeof ReportSchema>;
 
@@ -81,7 +91,10 @@ Rules:
 - Rate overall: red if the buyer is likely to face large costs (e.g. big special levies, underfunded reserves facing major work, serious unresolved building problems, litigation); amber if there are concerns worth investigating; green if no major concerns were found. Explain the rating in the summary.
 - Write plainly for a buyer who is not an expert, in Canadian English. Be specific, balanced and calm. No legal advice; suggest asking a lawyer or inspector where appropriate.
 - Fill every section; if nothing relevant was provided for a section, say so in its intro and leave items empty.
-- List missing documents only from the list you are given or where the notes clearly show something important is missing or out of date.`;
+- List missing documents only from the list you are given or where the notes clearly show something important is missing or out of date.
+- service_signals, using only the notes and today's date:
+  - depreciation_report: "current" if the newest depreciation report (or update) is dated within 5 years of today; "out_of_date" if it is older than 5 years, or the notes say an update is overdue; "not_found" if the package has no depreciation report and the notes don't show the strata has fewer than 5 lots; "unknown" if you can't tell.
+  - insurance_appraisal: "current" if the notes show a replacement cost (insurance) appraisal or appraisal update dated within 3 years of today; "out_of_date" if the newest one is older than 3 years, or the notes say the building may be under-insured; "not_found" if the package has insurance documents but no appraisal date or value basis; "unknown" if there is nothing to go on.`;
 
 export async function composeReport(opts: {
   orderId: string;

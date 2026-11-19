@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { site } from "@/lib/site";
+import { site, sisterCompany, sisterLink } from "@/lib/site";
 
 export function SiteFooter() {
   return (
@@ -21,6 +21,7 @@ export function SiteFooter() {
           <Link href="/sample-report" className="block hover:text-white">Sample report</Link>
           <Link href="/#pricing" className="block hover:text-white">Pricing</Link>
           <Link href="/#faq" className="block hover:text-white">Questions</Link>
+          <Link href="/for-realtors" className="block hover:text-white">For realtors</Link>
           <Link href="/privacy" className="block hover:text-white">Privacy</Link>
         </div>
         <div className="text-sm leading-7">
@@ -29,6 +30,11 @@ export function SiteFooter() {
             {site.email}
           </a>
           <p>Vancouver, British Columbia</p>
+          <p className="mt-4 font-semibold text-white">Sister company</p>
+          <a href={sisterLink("footer")} className="block hover:text-white">
+            {sisterCompany.shortName}
+          </a>
+          <p className="text-xs leading-5 text-silver-200/70">Appraisals and depreciation reports in BC</p>
         </div>
       </div>
       <div className="border-t border-white/10">

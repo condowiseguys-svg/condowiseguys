@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { startCheckout } from "@/lib/checkout";
 import { orderingEnabled } from "@/lib/config";
+import { recordMarketingConsent } from "@/lib/marketing";
 import { logEvent } from "@/lib/ops/events";
 import { isStripeTestMode } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -72,6 +73,8 @@ export async function createOrder(_prev: OrderFormState, form: FormData): Promis
   }
 
   await logEvent(order.id, "buyer", "order_created", { tier: tier.id, rush, amount_cents: amount });
+  if (form.get("marketing_consent") === "on")
+    await recordMarketingConsent({ orderId: order.id, email: buyerEmail, name: buyerName, source: "order_form" });
   let paymentUrl: string;
   try {
     paymentUrl = await startCheckout({ ...order, tier: tier.id, rush, amount_cents: amount, buyer_email: buyerEmail, property_address: propertyAddress });

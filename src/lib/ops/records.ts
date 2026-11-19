@@ -1,3 +1,5 @@
+import { hasMarketingConsent } from "@/lib/marketing";
+import { site, sisterCompany, sisterLink } from "@/lib/site";
 import { DOCUMENTS_BUCKET, RECORDS_BUCKET, supabaseAdmin } from "@/lib/supabase/admin";
 import { emailHtml, escapeHtml, sendEmailOnce } from "./email";
 import { logEvent, raiseIssue } from "./events";
@@ -236,6 +238,18 @@ export async function deliverReport(orderId: string) {
   if (sha256(bytes) !== version.sha256) throw new Error("Archived report does not match its fingerprint");
 
   const first = order.buyer_name.split(" ")[0];
+  // One line about DreamHomeGroup.ca, only for buyers who opted in, and only once a mailing
+  // address is set (CASL requires it in any email that promotes a service).
+  const promo = site.mailingAddress && (await hasMarketingConsent(orderId));
+  const promoHtml = promo
+    ? [
+        `Need an appraisal? Our sister company <a href="${sisterLink("report_email")}">${escapeHtml(sisterCompany.name)}</a> (same owner) provides market value appraisals, strata insurance appraisals and depreciation reports in BC.`,
+        `<span style="color:#64748b;font-size:13px">You're getting this note because you asked for offers from DreamHomeGroup.ca. Reply "unsubscribe" to stop. ${escapeHtml(site.name)}, ${escapeHtml(site.mailingAddress ?? "")}</span>`,
+      ]
+    : [];
+  const promoText = promo
+    ? `\nNeed an appraisal? Our sister company ${sisterCompany.name} (same owner) provides market value appraisals, strata insurance appraisals and depreciation reports in BC: ${sisterLink("report_email")}\n\nYou're getting this note because you asked for offers from DreamHomeGroup.ca. Reply "unsubscribe" to stop. ${site.name}, ${site.mailingAddress}\n`
+    : "";
   const result = await sendEmailOnce({
     key: `report:${version.id}`,
     orderId,
@@ -248,8 +262,9 @@ export async function deliverReport(orderId: string) {
       `Hi ${escapeHtml(first)},`,
       `Your review of <strong>${escapeHtml(order.property_address)}</strong> is attached.`,
       "Reply to this email if you have any questions about what we found.",
+      ...promoHtml,
     ]),
-    text: `Hi ${first},\n\nYour review of ${order.property_address} is attached.\n\nReply to this email if you have any questions.\n`,
+    text: `Hi ${first},\n\nYour review of ${order.property_address} is attached.\n\nReply to this email if you have any questions.\n${promoText}`,
   });
 
   if (result === "not_configured") {

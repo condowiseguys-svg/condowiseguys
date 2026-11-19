@@ -1,4 +1,5 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
+import { PDFDocument, PDFName, PDFString, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
+import { sisterCompany, sisterLink } from "@/lib/site";
 import { DOC_TYPE_LABEL } from "./checklist";
 import type { Segment } from "./classify";
 import { SECTION_IDS, SECTION_TITLES, type Report } from "./compose";
@@ -183,6 +184,53 @@ class Layout {
   }
 }
 
+/** Draws a line of text that opens a web address when clicked. */
+function drawLink(L: Layout, label: string, url: string, size = 10) {
+  L.ensure(size * 1.6);
+  const y = L.y - size;
+  const w = L.bold.widthOfTextAtSize(label, size);
+  L.page.drawText(label, { x: M, y, size, font: L.bold, color: rgb(0.12, 0.36, 0.85) });
+  const annot = L.doc.context.obj({
+    Type: "Annot",
+    Subtype: "Link",
+    Rect: [M, y - 2, M + w, y + size],
+    Border: [0, 0, 0],
+    A: { Type: "Action", S: "URI", URI: PDFString.of(url) },
+  });
+  const ref = L.doc.context.register(annot);
+  const annots = L.page.node.lookup(PDFName.of("Annots"));
+  if (annots && "push" in annots) (annots as { push: (r: unknown) => void }).push(ref);
+  else L.page.node.set(PDFName.of("Annots"), L.doc.context.obj([ref]));
+  L.y -= size * 1.6;
+}
+
+/** Plain-language suggestions tied to what the review found. */
+export function relatedServiceNotes(signals: Report["service_signals"] | undefined) {
+  const notes: string[] = [];
+  const dr = signals?.depreciation_report;
+  const ins = signals?.insurance_appraisal;
+  if (dr === "out_of_date")
+    notes.push(
+      "The strata's depreciation report appears to be more than 5 years old. BC strata corporations with 5 or more lots must get a new one at least every 5 years. DreamHomeGroup.ca prepares depreciation reports in BC, and the strata council can ask for a quote.",
+    );
+  if (dr === "not_found")
+    notes.push(
+      "No depreciation report was in the package. Ask the seller for it first. If the strata doesn't have a current one, DreamHomeGroup.ca prepares depreciation reports in BC.",
+    );
+  if (ins === "out_of_date")
+    notes.push(
+      "The strata's insurance appraisal appears to be more than 3 years old, which can leave the building under-insured. DreamHomeGroup.ca prepares replacement cost appraisals for strata insurance.",
+    );
+  if (ins === "not_found")
+    notes.push(
+      "We couldn't find how the building's insured value was set. Ask the strata manager when the last insurance appraisal was done. DreamHomeGroup.ca prepares replacement cost appraisals for strata insurance.",
+    );
+  notes.push(
+    "Want an independent opinion of the unit's market value before you remove subjects? DreamHomeGroup.ca provides market value appraisals.",
+  );
+  return notes;
+}
+
 function fmtDate(d: Date) {
   return d.toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric", timeZone: "America/Vancouver" });
 }
@@ -298,6 +346,16 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
   // ---- Questions
   L.heading("Questions to ask before removing subjects");
   report.questions.forEach((q, i) => L.text(`${i + 1}. ${q}`, { gap: 4 }));
+
+  // ---- Related services (same owner, disclosed)
+  L.heading("Related services from our sister company");
+  L.text(
+    `Condo Wise Guys and ${sisterCompany.name} are both owned by ${sisterCompany.owner}. We mention these services because they relate to what this review found. You are under no obligation to use them.`,
+    { size: 9.5, color: MUTED, gap: 6 },
+  );
+  relatedServiceNotes(report.service_signals).forEach((n) => L.item(n, null, ""));
+  drawLink(L, "dreamhomegroup.ca", sisterLink("report"));
+  L.y -= 4;
 
   // ---- Documents reviewed
   L.heading("Documents reviewed");

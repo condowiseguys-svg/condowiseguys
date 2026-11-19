@@ -174,3 +174,23 @@ The dashboard shows cost and margin per order in CAD. US dollar amounts use `USD
    push to `main`.
 4. Stripe webhook: add the events `checkout.session.async_payment_failed`,
    `checkout.session.expired`, `charge.refunded`, `charge.dispute.created` to the endpoint.
+
+## DreamHomeGroup.ca cross-promotion
+
+Condo Wise Guys and DreamHomeGroup.ca – Real Property Solutions have the same owner, and every
+mention says so.
+
+- **Report:** a "Related services from our sister company" section near the end. It always offers
+  a market value appraisal, and adds a depreciation report or insurance appraisal note when the
+  review finds the strata's report or appraisal out of date or missing (`service_signals` in the
+  report data). The link carries `utm_source=condowiseguys` so DreamHomeGroup.ca analytics show it.
+- **Order form:** an optional, unticked box to get emails from DreamHomeGroup.ca. Ticking it
+  saves a row in `marketing_consents` (needs `database-setup/Step 6 - marketing consent.sql`),
+  with the exact wording agreed to. If the table is missing, the order still goes through and an
+  issue appears on the dashboard.
+- **Report email:** one extra line about DreamHomeGroup.ca, only for buyers who opted in, and only
+  once `site.mailingAddress` is set in `src/lib/site.ts` (CASL requires a mailing address in any
+  email that promotes a service).
+- **Unsubscribes:** when someone replies "unsubscribe", set `withdrawn_at` on their rows in
+  `marketing_consents` within 10 business days.
+- **Website:** `/for-realtors`, a footer link, and a line in the "Who reviews Expert orders" section.

@@ -86,6 +86,14 @@ async function runChecks(): Promise<Check[]> {
       ? "Not set up: run database-setup/Step 5 - retention.sql in Supabase"
       : `ready (${(due ?? []).length} order${(due ?? []).length === 1 ? "" : "s"} due for deletion now)`,
   });
+  const { error: mcErr, status: mcStatus } = await db.from("marketing_consents").select("id").limit(1);
+  checks.push({
+    name: "Marketing consent",
+    ok: !mcErr,
+    detail: mcErr
+      ? `Not set up: run database-setup/Step 6 - marketing consent.sql in Supabase [${mcStatus}${mcErr.code ? ` ${mcErr.code}` : ""}]`
+      : "ready",
+  });
   checks.push({
     name: "Daily deletion job",
     ok: !!process.env.CRON_SECRET,

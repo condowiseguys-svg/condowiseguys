@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { RiskBadge, type Risk } from "@/components/RiskBadge";
-import { formatPrice, rushAddOn, tiers } from "@/lib/site";
+import { formatPrice, rushAddOn, sisterCompany, sisterLink, tiers } from "@/lib/site";
 
 const previewFindings: { text: string; risk: Risk }[] = [
   {
@@ -303,6 +303,13 @@ export default function Home() {
               worked in reserve planning since 2012. On Expert Reviewed orders
               he checks every finding, edits the report and adds his own notes
               before it reaches you.
+            </p>
+            <p className="mt-4 leading-7 text-silver-200">
+              Brian also runs{" "}
+              <a href={sisterLink("home_about")} className="font-semibold text-white underline">
+                {sisterCompany.name}
+              </a>
+              , which provides appraisals and depreciation reports in BC.
             </p>
           </div>
         </div>
