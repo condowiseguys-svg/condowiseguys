@@ -29,7 +29,7 @@ export function SiteFooter() {
           <a href={`mailto:${site.email}`} className="block hover:text-white">
             {site.email}
           </a>
-          <p>Vancouver, British Columbia</p>
+          <p>Kelowna, British Columbia</p>
           <p className="mt-4 font-semibold text-white">Sister company</p>
           <a href={sisterLink("footer")} className="block hover:text-white">
             {sisterCompany.shortName}
