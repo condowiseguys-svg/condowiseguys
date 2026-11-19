@@ -32,6 +32,22 @@ When a report version is approved (by Brian for Expert, automatically for Standa
 
 Corrections are a new version; the earlier approved one stays as it was.
 
+## Retention (how long things are kept)
+
+Decided 2026-11-19. Set up by `database-setup/Step 5 - retention.sql`; runs daily from Vercel
+(`/api/cron/retention`, needs `CRON_SECRET` in Vercel).
+
+- **90 days after delivery** (or refund): uploaded documents and draft reports are deleted,
+  including the document copies in `order-records`. The approved report and `record.json` stay.
+- **2 years after delivery:** the approved report and `record.json` are deleted, and the buyer's
+  name, email, phone, address and notes are erased from the order, its emails and its event log.
+  The order row stays (tier, amount, dates) as an anonymous business record.
+- **Cancelled or unpaid orders:** same schedule, counted from the order date.
+- **In-progress orders** are never touched.
+
+"Permanent" above means permanent until these dates: the database refuses any earlier delete.
+`/admin/health` shows whether retention is set up and how many orders are due.
+
 ## Duplicate protection when jobs retry
 
 - **Payments:** each Stripe event id is stored; a repeated webhook is ignored. Payment

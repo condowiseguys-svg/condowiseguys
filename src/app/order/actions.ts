@@ -38,7 +38,7 @@ export async function createOrder(_prev: OrderFormState, form: FormData): Promis
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail)) return { error: "Please enter a valid email." };
   if (subjectDate && !/^\d{4}-\d{2}-\d{2}$/.test(subjectDate)) return { error: "Please check the date." };
   if (form.get("agree") !== "on")
-    return { error: "Please confirm you understand the report is a document review, not legal advice." };
+    return { error: "Please tick the box to confirm the terms and the privacy policy." };
 
   const amount = orderPriceCents(tier.id, rush, isStripeTestMode());
   if (amount === null) return { error: "Prices are not set yet. Please email us to order." };

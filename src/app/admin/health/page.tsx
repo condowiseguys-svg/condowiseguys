@@ -78,6 +78,19 @@ async function runChecks(): Promise<Check[]> {
     const { error } = await db.storage.getBucket(b);
     checks.push({ name: `Storage ${b}`, ok: !error, detail: error ? error.message : "found" });
   }
+  const { data: due, error: retErr } = await db.rpc("orders_due_for_retention", { p_limit: 50 });
+  checks.push({
+    name: "Retention setup",
+    ok: !retErr,
+    detail: retErr
+      ? "Not set up: run database-setup/Step 5 - retention.sql in Supabase"
+      : `ready (${(due ?? []).length} order${(due ?? []).length === 1 ? "" : "s"} due for deletion now)`,
+  });
+  checks.push({
+    name: "Daily deletion job",
+    ok: !!process.env.CRON_SECRET,
+    detail: process.env.CRON_SECRET ? "CRON_SECRET is set" : "Add CRON_SECRET in Vercel so the daily job can run",
+  });
   return checks;
 }
 
