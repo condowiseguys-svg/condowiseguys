@@ -4,7 +4,7 @@ import { recordCost } from "@/lib/ops/costs";
 import { emailHtml, escapeHtml, sendEmailOnce } from "@/lib/ops/email";
 import { notifyAdmin } from "@/lib/ops/notify";
 import { logEvent, raiseIssue, resolveIssues } from "@/lib/ops/events";
-import { payLink } from "@/lib/ops/urls";
+import { payLink, uploadLink } from "@/lib/ops/urls";
 import { stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -59,9 +59,10 @@ export async function markPaidFromSession(session: Stripe.Checkout.Session) {
     .eq("id", orderId)
     .eq("stripe_session_id", session.id)
     .in("status", ["pending_payment", "payment_failed"])
-    .select("id");
+    .select("id, upload_token, buyer_name, buyer_email, property_address");
   if (error) throw error;
-  if (data?.length) {
+  const paid = data?.[0];
+  if (paid) {
     await logEvent(orderId, "stripe", "paid", { session: session.id, amount: session.amount_total });
     await resolveIssues({ orderId }, "stripe", "Payment succeeded");
     if (paymentIntent) await recordStripeFee(orderId, paymentIntent);
@@ -71,8 +72,39 @@ export async function markPaidFromSession(session: Stripe.Checkout.Session) {
       subject: "New paid order",
       lines: [`Paid ${((session.amount_total ?? 0) / 100).toFixed(2)} ${(session.currency ?? "cad").toUpperCase()}. The buyer can now upload documents.`],
     });
+    await sendBuyerConfirmation(paid, session);
   }
   return true;
+}
+
+/** Thanks the buyer and gives them their upload link. Never throws: payment is already recorded. */
+async function sendBuyerConfirmation(
+  order: { id: string; upload_token: string; buyer_name: string; buyer_email: string; property_address: string },
+  session: Stripe.Checkout.Session,
+) {
+  try {
+    const link = uploadLink(order.id, order.upload_token);
+    const amount = `$${((session.amount_total ?? 0) / 100).toFixed(2)} ${(session.currency ?? "cad").toUpperCase()}`;
+    await sendEmailOnce({
+      key: `order-confirmed:${session.id}`,
+      orderId: order.id,
+      kind: "order_confirmed",
+      to: order.buyer_email,
+      subject: `Order confirmed: ${order.property_address}`,
+      html: emailHtml(
+        [
+          `Hi ${escapeHtml(order.buyer_name.split(" ")[0])},`,
+          `Thanks for your order. We received your payment of <strong>${escapeHtml(amount)}</strong> for the review of <strong>${escapeHtml(order.property_address)}</strong>.`,
+          "If you haven't uploaded your strata documents yet, use the button below. You can come back to this link any time.",
+          `Your order number is ${escapeHtml(order.id.slice(0, 8))}.`,
+        ],
+        { href: link, label: "Upload documents" },
+      ),
+      text: `Thanks for your order for ${order.property_address} (${amount}). Upload your documents here: ${link}\nOrder number: ${order.id.slice(0, 8)}\n`,
+    });
+  } catch (err) {
+    console.error("order confirmation email failed", order.id, err);
+  }
 }
 
 /** Stores Stripe's processing fee as a cost of the order. Best effort; keyed so it counts once. */

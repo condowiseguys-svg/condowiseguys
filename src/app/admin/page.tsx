@@ -3,6 +3,9 @@ import { integrationStatus } from "@/lib/config";
 import { emailConfigured } from "@/lib/ops/email";
 import { loadDashboard } from "@/lib/ops/dashboard";
 import { tiers } from "@/lib/site";
+import { adminEmail } from "@/lib/ops/notify";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { sendTestEmail } from "./actions";
 import { LEVEL_STYLE, STATUS_LABEL, money, when } from "./format";
 
 export const dynamic = "force-dynamic";
@@ -17,12 +20,18 @@ function Stat({ label, value, note }: { label: string; value: string | number; n
   );
 }
 
-export default async function AdminPage() {
+export default async function AdminPage({ searchParams }: { searchParams: Promise<{ msg?: string }> }) {
+  const { msg } = await searchParams;
   const status = integrationStatus();
   if (!status.supabase) {
     return <p className="text-slate-600">Supabase isn&apos;t connected yet, so there are no orders to show.</p>;
   }
   const { rows, attention, summary, usdToCad } = await loadDashboard();
+  const { data: emails } = await supabaseAdmin()
+    .from("outbound_emails")
+    .select("id, created_at, to_email, subject, status, last_error, kind")
+    .order("created_at", { ascending: false })
+    .limit(15);
   const avgCost = summary.orders30 ? summary.cost30 / summary.orders30 : 0;
   const tierName = (id: string) => tiers.find((t) => t.id === id)?.name.replace(/ Review(ed)?$/, "") ?? id;
   const missing = [
@@ -33,6 +42,15 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-10">
+      {msg && (
+        <p
+          className={`rounded-lg px-4 py-3 text-sm ring-1 ${
+            msg.startsWith("Error") ? "bg-red-50 text-red-800 ring-red-200" : "bg-green-50 text-green-800 ring-green-200"
+          }`}
+        >
+          {msg}
+        </p>
+      )}
       {missing.length > 0 && (
         <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
           Not set up yet: {missing.join(", ")}.
@@ -125,6 +143,58 @@ export default async function AdminPage() {
                 <tr>
                   <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
                     No orders yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-navy-900">Recent emails</h2>
+            <p className="text-sm text-slate-500">Your notifications go to {adminEmail()}.</p>
+          </div>
+          <form action={sendTestEmail}>
+            <button className="rounded-lg bg-white px-3 py-2 text-sm font-medium text-navy-900 ring-1 ring-slate-300 hover:bg-slate-50">
+              Send me a test email
+            </button>
+          </form>
+        </div>
+        <div className="mt-3 overflow-x-auto rounded-xl bg-white ring-1 ring-slate-200">
+          <table className="w-full text-sm">
+            <thead className="text-left text-slate-500">
+              <tr>
+                <th className="px-4 py-2 font-medium">When</th>
+                <th className="px-4 py-2 font-medium">To</th>
+                <th className="px-4 py-2 font-medium">Subject</th>
+                <th className="px-4 py-2 font-medium">Result</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {(emails ?? []).map((e) => (
+                <tr key={e.id}>
+                  <td className="whitespace-nowrap px-4 py-2 text-slate-500">{when(e.created_at)}</td>
+                  <td className="px-4 py-2">{e.to_email}</td>
+                  <td className="max-w-[320px] truncate px-4 py-2">{e.subject}</td>
+                  <td className="px-4 py-2">
+                    {e.status === "sent" ? (
+                      <span className="text-green-700">Sent</span>
+                    ) : (
+                      <span className="text-red-700">
+                        {e.status === "failed" ? "Failed" : "Not sent"}
+                        {e.last_error ? `: ${e.last_error}` : ""}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {(emails ?? []).length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
+                    No emails yet.
                   </td>
                 </tr>
               )}
