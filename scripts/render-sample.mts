@@ -50,6 +50,7 @@ const report: Report = {
   ],
   missing_documents: [{ document: "Insurance certificate", why_it_matters: "Needed to confirm deductibles." }],
   questions: ["What is this unit’s share of the 2027 roof project?", "Have the 2024 leaks been repaired?"],
+  service_signals: { depreciation_report: "current", insurance_appraisal: "out_of_date" },
 };
 const pdf = await renderReportPdf(report, segments, {
   orderId: "2f0492ca-0000-0000-0000-000000000000",

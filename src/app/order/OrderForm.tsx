@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { MARKETING_CONSENT_TEXT } from "@/lib/site";
 import { createOrder, type OrderFormState } from "./actions";
 
 type TierOption = { id: string; name: string; turnaround: string; price: string };
@@ -126,6 +127,13 @@ export function OrderForm({
             privacy policy
           </a>
           .
+        </span>
+      </label>
+
+      <label className="flex items-start gap-3 text-sm text-slate-700">
+        <input type="checkbox" name="marketing_consent" className="mt-1 h-4 w-4" />
+        <span>
+          Optional. {MARKETING_CONSENT_TEXT}
         </span>
       </label>
 

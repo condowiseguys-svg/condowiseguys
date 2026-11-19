@@ -7,6 +7,7 @@ export const metadata: Metadata = {
 
 const CONTACT = "report@condowiseguys.com";
 const UPDATED = "November 19, 2026";
+const SISTER = "DreamHomeGroup.ca – Real Property Solutions";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -48,9 +49,17 @@ export default function PrivacyPage() {
 
       <Section title="How we use it">
         <p>
-          Only to prepare and deliver your document review, take payment, keep a record of what we
-          delivered, and answer your questions. We do not sell your information, use it for
-          advertising, or use your documents for anything else.
+          To prepare and deliver your document review, take payment, keep a record of what we
+          delivered, and answer your questions. We do not sell your information or use your
+          documents for anything else.
+        </p>
+        <p>
+          If you tick the optional box on the order form, we will also send you occasional emails
+          about appraisals and depreciation reports from {SISTER}, our sister company. Both
+          businesses are owned by Brian A. Hill. We only use your name and email for this, and only
+          with your consent. Reply &quot;unsubscribe&quot; to any of these emails, or email us, and
+          we will stop. We keep a record of your consent (the date and the wording you agreed to)
+          until you withdraw it.
         </p>
       </Section>
 
@@ -81,6 +90,10 @@ export default function PrivacyPage() {
             as a business record.
           </li>
           <li>Orders that are cancelled or never paid follow the same schedule from the order date.</li>
+          <li>
+            If you opted in to emails from {SISTER}, we keep your name, email and consent record
+            until you unsubscribe.
+          </li>
         </ul>
       </Section>
 

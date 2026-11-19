@@ -5,7 +5,36 @@ export const site = {
   domain: "condowiseguys.com",
   email: "info@condowiseguys.com",
   tagline: "BC strata document reviews, in plain English",
+  /**
+   * Postal mailing address. Canada's anti-spam law (CASL) requires one in any email that
+   * promotes a service, so the DreamHomeGroup.ca line in report emails stays off until this is set.
+   */
+  mailingAddress: null as string | null,
 };
+
+/**
+ * Brian's appraisal and depreciation report company. Condo Wise Guys and DreamHomeGroup.ca have
+ * the same owner, so every mention says so.
+ */
+export const sisterCompany = {
+  name: "DreamHomeGroup.ca – Real Property Solutions",
+  shortName: "DreamHomeGroup.ca",
+  url: "https://dreamhomegroup.ca",
+  owner: "Brian A. Hill, B.Comm., DAR, DRP, CRP",
+  services: [
+    "Market value residential appraisals",
+    "Replacement cost (insurance) appraisals for strata and condo buildings",
+    "Depreciation reports for BC strata corporations",
+  ],
+};
+
+/** The exact wording shown next to the opt-in box on the order form. Stored with each consent. */
+export const MARKETING_CONSENT_TEXT = `Send me occasional emails about appraisals and depreciation reports from ${sisterCompany.name}, our sister company with the same owner. I can unsubscribe at any time.`;
+
+/** Link to DreamHomeGroup.ca tagged with where it came from, so Brian can see which links work. */
+export function sisterLink(placement: string) {
+  return `${sisterCompany.url}/?utm_source=condowiseguys&utm_medium=referral&utm_campaign=${encodeURIComponent(placement)}`;
+}
 
 export type Tier = {
   id: string;
