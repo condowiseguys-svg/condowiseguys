@@ -24,7 +24,7 @@ const reasons = [
   },
   {
     title: "Reviewed by an appraiser",
-    text: "On Expert Reviewed orders, Brian, an appraiser with 40 years of experience, checks every finding before it is sent.",
+    text: "On Expert Reviewed orders, Brian Hill (B.Comm., DAR, DRP, RRC), an appraiser since 1986, checks every finding before it is sent.",
   },
 ];
 

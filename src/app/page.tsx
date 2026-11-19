@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { RiskBadge, type Risk } from "@/components/RiskBadge";
-import { formatPrice, rushAddOn, sisterCompany, sisterLink, tiers } from "@/lib/site";
+import { formatPrice, founder, rushAddOn, sisterCompany, sisterLink, tiers } from "@/lib/site";
 
 const previewFindings: { text: string; risk: Risk }[] = [
   {
@@ -299,10 +299,11 @@ export default function Home() {
               Who reviews Expert orders
             </h2>
             <p className="mt-5 text-lg leading-8 text-silver-200">
-              Brian brings more than 40 years in real estate appraisal and has
-              worked in reserve planning since 2012. On Expert Reviewed orders
-              he checks every finding, edits the report and adds his own notes
-              before it reaches you.
+              {founder.name}, {founder.designations}, has been an appraiser
+              since 1986, starting at CMHC, and has prepared depreciation
+              reports for BC strata corporations since 2012. On Expert Reviewed
+              orders he checks every finding, edits the report and adds his own
+              notes before it reaches you.
             </p>
             <p className="mt-4 leading-7 text-silver-200">
               Brian also runs{" "}
@@ -311,6 +312,12 @@ export default function Home() {
               </a>
               , which provides appraisals and depreciation reports in BC.
             </p>
+            <Link
+              href="/about"
+              className="mt-6 inline-block font-semibold text-white underline"
+            >
+              Brian&apos;s background and qualifications
+            </Link>
           </div>
         </div>
       </section>

@@ -22,11 +22,59 @@ export const sisterCompany = {
   name: "DreamHomeGroup.ca – Real Property Solutions",
   shortName: "DreamHomeGroup.ca",
   url: "https://dreamhomegroup.ca",
-  owner: "Brian A. Hill, B.Comm., DAR, DRP, CRP",
+  owner: "Brian A. Hill, B.Comm., DAR, DRP, RRC",
   services: [
     "Market value residential appraisals",
     "Replacement cost (insurance) appraisals for strata and condo buildings",
     "Depreciation reports for BC strata corporations",
+  ],
+};
+
+/**
+ * Brian's background for the About page and the report. Taken from his qualifications sheet
+ * (Nov 2026): add nothing here that isn't on it.
+ */
+export const founder = {
+  name: "Brian A. Hill",
+  designations: "B.Comm., DAR, DRP, RRC",
+  /** Short line used on the home page, the realtor page and in reports. */
+  summary:
+    "An appraiser since 1986 and a reserve planner since 2012, with DAR, DRP and RRC designations.",
+  history: [
+    "Brian Hill began his appraisal career at CMHC before moving into the private sector. As technology advanced and the industry evolved, so did Brian.",
+    "He went on to work with The Appraisal Group, another independent firm, and then served as President of Associated Appraisal Co. in Saskatoon.",
+    "Dream Home Appraisal began in 2000, providing residential appraisal services in Saskatchewan, Alberta and British Columbia. In recent years its services have expanded to include depreciation reports (also called reserve fund studies) and replacement cost estimates throughout BC, including the Okanagan Valley, the Shuswap, Vancouver Island and other BC communities. Today the company is DreamHomeGroup.ca – Real Property Solutions.",
+    "Condo Wise Guys puts that experience to work for people buying a strata home in BC. On Expert Reviewed orders, Brian checks every finding himself before the report is sent.",
+  ],
+  designationsHeld: [
+    {
+      name: "DAR, Designated Appraiser Residential",
+      from: "Canadian National Association of Real Estate Appraisers (CNAREA), 2012",
+    },
+    {
+      name: "DRP, Designated Reserve Planner",
+      from: "Canadian National Association of Real Estate Appraisers (CNAREA), 2012",
+    },
+    { name: "RRC, Registered Reserve Consultant", from: "International Capital Budgeting Institute" },
+  ],
+  education: [
+    "B.Comm. (Finance), University of Saskatchewan, 1986",
+    "CRA, Canadian Residential Appraiser, UBC Sauder, 1995",
+    "Canadian Securities Course (CSC), Canadian Securities Institute, 1983",
+  ],
+  current: [
+    "President, DreamHomeGroup.ca – Real Property Solutions",
+    "President, Associated Reserve Planners of Canada Inc., 2013 to present",
+    "Exclusive reseller of RFA Pro reserve fund analysis software, 2012 to present",
+    "Standards Committee member, International Capital Budgeting Institute, 2015 to present",
+    "Board member, International Capital Budgeting Institute",
+  ],
+  past: [
+    "Instructor, DRP program, Canadian National Association of Real Estate Appraisers, 2012 to 2015",
+    "President, Associated Appraisal Co., 1990 to 2001",
+    "Appraiser, The Appraisal Group, 1986 to 1990",
+    "Appraiser, CMHC, 1986",
+    "Investment advisor, Investors Group, 1985 to 1986",
   ],
 };
 
