@@ -127,7 +127,8 @@ class Layout {
   }
 
   heading(text: string) {
-    this.ensure(60);
+    // Room for the heading and the first lines under it, so a heading never ends a page.
+    this.ensure(110);
     this.y -= 10;
     this.text(text, { size: 14, font: this.bold, color: NAVY });
     this.page.drawRectangle({ x: M, y: this.y - 2, width: CONTENT_W, height: 1, color: RULE });
@@ -135,7 +136,7 @@ class Layout {
   }
 
   subheading(text: string) {
-    this.ensure(40);
+    this.ensure(80);
     this.y -= 4;
     this.text(text, { size: 11, font: this.bold, color: NAVY, gap: 2 });
   }
@@ -231,8 +232,10 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
   L.ensure(40);
   L.page.drawText("Overall rating", { x: M, y: L.y - 12, size: 12, font: bold, color: NAVY });
   const pw = L.pill(report.rating, M + 92, L.y - 1);
-  L.page.drawText(L.clean(report.rating_headline, bold).slice(0, 70), { x: M + 100 + pw, y: L.y - 11, size: 11, font: bold, color: TEXT });
-  L.y -= 24;
+  const hx = M + 100 + pw;
+  const headline = L.wrap(report.rating_headline, bold, 11, CONTENT_W - (hx - M)).slice(0, 3);
+  headline.forEach((t, i) => L.page.drawText(t, { x: hx, y: L.y - 11 - i * 14, size: 11, font: bold, color: TEXT }));
+  L.y -= 24 + (headline.length - 1) * 14;
   L.heading("Executive summary");
   L.text(report.summary, { size: 10.5, gap: 8 });
   if (report.priorities?.length) {
@@ -259,7 +262,7 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
     L.table(
       ["Period", "Status", "Whole strata", "Estimated share for this unit", "Source"],
       report.levies.rows.map((r) => [r.period, r.status, r.strata_total, r.unit_share, cite(r.pages)]),
-      [70, 70, 110, 140, CONTENT_W - 390],
+      [150, 58, 92, 124, CONTENT_W - 424],
     );
     L.text(report.levies.basis, { size: 8.5, color: MUTED, gap: 6 });
   }
