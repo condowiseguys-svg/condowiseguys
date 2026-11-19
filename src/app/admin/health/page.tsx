@@ -16,14 +16,29 @@ function keyKind(key: string | undefined) {
   const parts = k.split(".");
   if (parts.length === 3) {
     try {
-      const role = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")).role;
-      if (role === "service_role") return { label: "service_role key (correct)", ok: true };
+      const claims = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+      const role = claims.role;
+      const ref = typeof claims.ref === "string" ? claims.ref : null;
+      const urlRef = supabaseOrigin(process.env.SUPABASE_URL)?.match(/^https:\/\/([a-z0-9]+)\./)?.[1];
+      if (ref && urlRef && ref !== urlRef) {
+        return { label: `key belongs to a different project (${ref}), not ${urlRef}`, ok: false };
+      }
+      if (role === "service_role") return { label: `service_role key for ${ref ?? "this project"} (correct)`, ok: true };
       return { label: `${role} key (wrong one: use service_role)`, ok: false };
     } catch {
       /* fall through */
     }
   }
   return { label: "not recognised as a Supabase key", ok: false };
+}
+
+/** Plain-English meaning of the usual Supabase failures. */
+function explain(status: number, code?: string) {
+  if (status === 401 || code === "PGRST301") return "The key was rejected: it is not this project's secret/service_role key.";
+  if (status === 403 || code === "42501") return "The key has no permission on this table.";
+  if (status === 404 || code === "PGRST205" || code === "42P01") return "Table not found: run the setup SQL files in this project.";
+  if (code === "PGRST106") return "The public schema is not exposed in Project Settings > Data API.";
+  return "Unexpected error.";
 }
 
 type Check = { name: string; ok: boolean; detail: string };
@@ -49,8 +64,15 @@ async function runChecks(): Promise<Check[]> {
     return checks;
   }
   for (const t of TABLES) {
-    const { error } = await db.from(t).select("*", { count: "exact", head: true });
-    checks.push({ name: `Table ${t}`, ok: !error, detail: error ? error.message || error.code || "error" : "found" });
+    // A normal read (not a HEAD request) so a failure comes back with its reason.
+    const { error, status } = await db.from(t).select("*").limit(1);
+    checks.push({
+      name: `Table ${t}`,
+      ok: !error,
+      detail: error
+        ? `${explain(status, error.code)} [${status}${error.code ? ` ${error.code}` : ""}${error.message ? `: ${error.message}` : ""}]`
+        : "found",
+    });
   }
   for (const b of [DOCUMENTS_BUCKET, RECORDS_BUCKET]) {
     const { error } = await db.storage.getBucket(b);
