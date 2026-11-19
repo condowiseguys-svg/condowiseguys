@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertAdmin } from "@/lib/admin-auth";
-import { emailConfigured, emailHtml, sendEmailOnce } from "@/lib/ops/email";
+import { emailConfigured, emailFrom, emailHtml, sendEmailOnce } from "@/lib/ops/email";
 import { logEvent, resolveIssues } from "@/lib/ops/events";
 import { adminEmail } from "@/lib/ops/notify";
 import { startDelivery, startProcessing } from "@/lib/ops/jobs";
@@ -108,7 +108,7 @@ export async function sendTestEmail() {
   await assertAdmin();
   let msg: string;
   if (!emailConfigured()) {
-    msg = "Error: email isn't set up on the website. RESEND_API_KEY or EMAIL_FROM is missing in Vercel.";
+    msg = "Error: email isn't set up on the website. RESEND_API_KEY is missing in Vercel.";
   } else {
     const to = adminEmail();
     try {
@@ -121,7 +121,7 @@ export async function sendTestEmail() {
         html: emailHtml(["This is a test. If you can read this, notification emails reach you."]),
         text: "This is a test. If you can read this, notification emails reach you.\n",
       });
-      msg = `Sent a test email to ${to} from ${process.env.EMAIL_FROM}. Resend accepted it. If it doesn't arrive in a few minutes, check spam, then the Emails page in Resend for a bounce.`;
+      msg = `Sent a test email to ${to} from ${emailFrom()}. Resend accepted it. If it doesn't arrive in a few minutes, check spam, then the Emails page in Resend for a bounce.`;
     } catch (err) {
       msg = `Error sending to ${to}: ${err instanceof Error ? err.message : String(err)}`;
     }

@@ -8,8 +8,23 @@ function resendKey() {
   return process.env.RESEND_API_KEY || process.env.resend_api_key;
 }
 
+const DEFAULT_FROM = "Condo Wise Guys <report@condowiseguys.com>";
+
+/**
+ * The sender, tidied up so small typing slips in EMAIL_FROM (surrounding quotes, a missing ">",
+ * extra spaces) don't make Resend reject every email. Falls back to the default sender when
+ * no address can be found in it.
+ */
+export function emailFrom() {
+  const raw = (process.env.EMAIL_FROM ?? "").trim().replace(/^["']+|["']+$/g, "").trim();
+  const address = raw.match(/[^\s<>"']+@[^\s<>"']+\.[^\s<>"']+/)?.[0];
+  if (!address) return DEFAULT_FROM;
+  const name = raw.split("<")[0].replace(address, "").replace(/["']/g, "").trim();
+  return name ? `${name} <${address}>` : address;
+}
+
 export function emailConfigured() {
-  return Boolean(resendKey() && process.env.EMAIL_FROM);
+  return Boolean(resendKey());
 }
 
 /**
@@ -63,7 +78,7 @@ export async function sendEmailOnce(msg: {
       "idempotency-key": msg.key.slice(0, 256),
     },
     body: JSON.stringify({
-      from: process.env.EMAIL_FROM,
+      from: emailFrom(),
       to: [msg.to],
       reply_to: process.env.EMAIL_REPLY_TO || undefined,
       subject: msg.subject,
