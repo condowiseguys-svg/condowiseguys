@@ -1,5 +1,5 @@
 import { PDFDocument, PDFName, PDFString, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
-import { sisterCompany, sisterLink } from "@/lib/site";
+import { founder, sisterCompany, sisterLink } from "@/lib/site";
 import { DOC_TYPE_LABEL } from "./checklist";
 import type { Segment } from "./classify";
 import { SECTION_IDS, SECTION_TITLES, type Report } from "./compose";
@@ -373,6 +373,10 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
     `This report summarizes the strata documents provided to Condo Wise Guys for this property. It was prepared with the help of AI and ${
       meta.tier === "expert" ? "checked by our reviewer before delivery" : "quality checked against our BC strata checklist"
     }. ${meta.ocrPages ? `${meta.ocrPages} scanned pages were read by text recognition, which can misread numbers; check important figures against the source page. ` : ""}It relies on the documents as given: anything not in the package, or changed since, is not covered. It is not a legal opinion, a building inspection, an appraisal, or financial advice. Before removing subjects, confirm important points with the strata manager, and consider advice from a lawyer, notary, or home inspector. Page references are to the PDF pages of the package you provided.`,
+    { size: 9, color: MUTED, gap: 6 },
+  );
+  L.text(
+    `Condo Wise Guys is owned by ${founder.name}, ${founder.designations}: ${founder.summary.charAt(0).toLowerCase()}${founder.summary.slice(1)} Read more at condowiseguys.com/about.`,
     { size: 9, color: MUTED, gap: 6 },
   );
   L.text(`Questions about this report: ${meta.contactEmail}. Order reference ${meta.orderId.slice(0, 8)}.`, { size: 9, color: MUTED });

@@ -22,6 +22,7 @@ export function SiteFooter() {
           <Link href="/#pricing" className="block hover:text-white">Pricing</Link>
           <Link href="/#faq" className="block hover:text-white">Questions</Link>
           <Link href="/for-realtors" className="block hover:text-white">For realtors</Link>
+          <Link href="/about" className="block hover:text-white">About Brian</Link>
           <Link href="/privacy" className="block hover:text-white">Privacy</Link>
         </div>
         <div className="text-sm leading-7">
