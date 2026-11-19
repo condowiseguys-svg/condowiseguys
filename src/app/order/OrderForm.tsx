@@ -28,8 +28,8 @@ export function OrderForm({
       {/* Spam trap: hidden from people, but simple bots fill in every field. */}
       <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
         <label>
-          Leave this empty
-          <input type="text" name="company_website" tabIndex={-1} autoComplete="off" defaultValue="" />
+          Do not fill in
+          <input type="text" name="cwg_trap" tabIndex={-1} autoComplete="one-time-code" data-1p-ignore data-lpignore="true" defaultValue="" />
         </label>
       </div>
       {testMode && (

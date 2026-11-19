@@ -19,7 +19,10 @@ function text(form: FormData, name: string, max = 300) {
 export async function createOrder(_prev: OrderFormState, form: FormData): Promise<OrderFormState> {
   if (!orderingEnabled()) return { error: "Online ordering is not switched on yet." };
   // Spam trap field that people never see. Bots that fill it get a quiet, generic failure.
-  if (text(form, "company_website")) return { error: "Something went wrong saving your order. Please try again." };
+  if (text(form, "cwg_trap")) {
+    console.warn("order blocked by spam trap");
+    return { error: "We couldn't accept this order (code T). Please email us." };
+  }
 
   const tierId = text(form, "tier");
   const tier = tiers.find((t) => t.id === tierId);
@@ -63,7 +66,9 @@ export async function createOrder(_prev: OrderFormState, form: FormData): Promis
     .single();
   if (error || !order) {
     console.error("order insert failed", error);
-    return { error: "Something went wrong saving your order. Please try again." };
+    // In test mode, show the database's reason so setup problems are easy to spot.
+    const detail = isStripeTestMode() && error?.message ? `: ${error.message}` : "";
+    return { error: `Something went wrong saving your order (code S${detail}). Please try again or email us.` };
   }
 
   await logEvent(order.id, "buyer", "order_created", { tier: tier.id, rush, amount_cents: amount });
