@@ -6,6 +6,7 @@ import { orderingEnabled } from "@/lib/config";
 import { logEvent } from "@/lib/ops/events";
 import { isStripeTestMode } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { orderRateLimit } from "@/lib/rate-limit";
 import { orderPriceCents, tiers } from "@/lib/site";
 
 export type OrderFormState = { error?: string };
@@ -17,6 +18,8 @@ function text(form: FormData, name: string, max = 300) {
 
 export async function createOrder(_prev: OrderFormState, form: FormData): Promise<OrderFormState> {
   if (!orderingEnabled()) return { error: "Online ordering is not switched on yet." };
+  // Spam trap field that people never see. Bots that fill it get a quiet, generic failure.
+  if (text(form, "company_website")) return { error: "Something went wrong saving your order. Please try again." };
 
   const tierId = text(form, "tier");
   const tier = tiers.find((t) => t.id === tierId);
@@ -36,6 +39,9 @@ export async function createOrder(_prev: OrderFormState, form: FormData): Promis
 
   const amount = orderPriceCents(tier.id, rush, isStripeTestMode());
   if (amount === null) return { error: "Prices are not set yet. Please email us to order." };
+
+  const limited = await orderRateLimit(buyerEmail);
+  if (limited) return { error: limited };
 
   const db = supabaseAdmin();
   const { data: order, error } = await db

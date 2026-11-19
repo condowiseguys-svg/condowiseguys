@@ -16,6 +16,15 @@ export function ocrModel() {
   return process.env.OCR_MODEL || analysisModel();
 }
 
+/**
+ * Where Claude may process the documents. Set CLAUDE_INFERENCE_GEO=us in Trigger.dev to keep
+ * processing on US servers only (costs about 10% more). Unset uses Anthropic's default
+ * ("global"), which may route a request to servers outside the US.
+ */
+export function inferenceGeo(): "us" | undefined {
+  return process.env.CLAUDE_INFERENCE_GEO?.trim().toLowerCase() === "us" ? "us" : undefined;
+}
+
 let client: Anthropic | null = null;
 export function claude() {
   if (client) return client;
@@ -50,6 +59,7 @@ export async function askForJson<S extends z.ZodType>(opts: {
     max_tokens: opts.maxTokens ?? 64000,
     system: opts.system,
     output_config: { effort: opts.effort ?? "high", format: zodOutputFormat(opts.schema) },
+    ...(inferenceGeo() ? { inference_geo: inferenceGeo() } : {}),
     messages: [{ role: "user", content: opts.content }],
   });
   const message = await stream.finalMessage();
