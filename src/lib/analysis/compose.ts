@@ -38,7 +38,9 @@ export const ReportSchema = z.object({
     .object({
       rows: z.array(
         z.object({
-          period: z.string(),
+          period: z
+            .string()
+            .describe("Short, under 50 characters: when and what, e.g. '2027 (depreciation report forecast)' or '2021 SGM: One West settlement'"),
           status: z.enum(["approved", "proposed", "forecast"]),
           strata_total: z.string(),
           unit_share: z.string().describe("Estimated share for this lot, e.g. 'about $10,900', or 'unknown'"),
