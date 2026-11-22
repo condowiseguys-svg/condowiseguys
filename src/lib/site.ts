@@ -55,8 +55,7 @@ export const founder = {
       name: "DRP, Designated Reserve Planner",
       from: "Canadian National Association of Real Estate Appraisers (CNAREA), 2012",
     },
-    // Brian asked (Nov 22) to show CRP in place of RRC; add its full name and issuer when known.
-    { name: "CRP", from: undefined as string | undefined },
+    { name: "CRP, Certified Reserve Planner", from: "Real Estate Institute of Canada (REIC)" },
   ],
   education: [
     "B.Comm. (Finance), University of Saskatchewan, 1986",

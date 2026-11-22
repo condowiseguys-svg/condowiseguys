@@ -62,7 +62,7 @@ export default function AboutPage() {
               items={founder.designationsHeld.map((d) => (
                 <>
                   <span className="font-medium text-navy-900">{d.name}</span>
-                  {d.from && <span className="block text-sm text-slate-500">{d.from}</span>}
+                  <span className="block text-sm text-slate-500">{d.from}</span>
                 </>
               ))}
             />
