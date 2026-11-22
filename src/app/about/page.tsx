@@ -6,7 +6,7 @@ import { founder, site, sisterCompany, sisterLink } from "@/lib/site";
 export const metadata: Metadata = {
   title: "About Brian Hill: appraiser and reserve planner",
   description:
-    "Condo Wise Guys is owned by Brian A. Hill, B.Comm., DAR, DRP, RRC, an appraiser since 1986 who has prepared depreciation reports for BC strata corporations since 2012.",
+    "Condo Wise Guys is owned by Brian A. Hill, B.Comm., DAR, DRP, CRP, an appraiser since 1986 who has prepared depreciation reports for BC strata corporations since 2012.",
   alternates: { canonical: "/about" },
 };
 
@@ -62,7 +62,7 @@ export default function AboutPage() {
               items={founder.designationsHeld.map((d) => (
                 <>
                   <span className="font-medium text-navy-900">{d.name}</span>
-                  <span className="block text-sm text-slate-500">{d.from}</span>
+                  {d.from && <span className="block text-sm text-slate-500">{d.from}</span>}
                 </>
               ))}
             />

@@ -22,7 +22,7 @@ export const sisterCompany = {
   name: "DreamHomeGroup.ca – Real Property Solutions",
   shortName: "DreamHomeGroup.ca",
   url: "https://dreamhomegroup.ca",
-  owner: "Brian A. Hill, B.Comm., DAR, DRP, RRC",
+  owner: "Brian A. Hill, B.Comm., DAR, DRP, CRP",
   services: [
     "Market value residential appraisals",
     "Replacement cost (insurance) appraisals for strata and condo buildings",
@@ -36,10 +36,10 @@ export const sisterCompany = {
  */
 export const founder = {
   name: "Brian A. Hill",
-  designations: "B.Comm., DAR, DRP, RRC",
+  designations: "B.Comm., DAR, DRP, CRP",
   /** Short line used on the home page, the realtor page and in reports. */
   summary:
-    "An appraiser since 1986 and a reserve planner since 2012, with DAR, DRP and RRC designations.",
+    "An appraiser since 1986 and a reserve planner since 2012, with DAR, DRP and CRP designations.",
   history: [
     "Brian Hill began his appraisal career at CMHC before moving into the private sector. As technology advanced and the industry evolved, so did Brian.",
     "He went on to work with The Appraisal Group, another independent firm, and then served as President of Associated Appraisal Co. in Saskatoon.",
@@ -55,7 +55,8 @@ export const founder = {
       name: "DRP, Designated Reserve Planner",
       from: "Canadian National Association of Real Estate Appraisers (CNAREA), 2012",
     },
-    { name: "RRC, Registered Reserve Consultant", from: "International Capital Budgeting Institute" },
+    // Brian asked (Nov 22) to show CRP in place of RRC; add its full name and issuer when known.
+    { name: "CRP", from: undefined as string | undefined },
   ],
   education: [
     "B.Comm. (Finance), University of Saskatchewan, 1986",
