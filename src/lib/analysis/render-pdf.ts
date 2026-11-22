@@ -1,6 +1,6 @@
 import { PDFDocument, PDFName, PDFString, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
 import { founder, sisterCompany, sisterLink } from "@/lib/site";
-import { DOC_TYPE_LABEL } from "./checklist";
+import { DOC_TYPE_LABEL, RISK_ACTION, TOP_RED_FLAGS } from "./checklist";
 import type { Segment } from "./classify";
 import { SECTION_IDS, SECTION_TITLES, type Report } from "./compose";
 import { LOGO_JPEG_BASE64 } from "./logo";
@@ -142,17 +142,16 @@ class Layout {
     this.text(text, { size: 11, font: this.bold, color: NAVY, gap: 2 });
   }
 
-  pill(risk: Risk, x: number, yTop: number) {
-    const label = RISK_LABEL[risk];
+  pill(risk: Risk | "not_checked", x: number, yTop: number) {
+    const label = risk === "not_checked" ? "Not checked" : RISK_LABEL[risk];
     const w = this.bold.widthOfTextAtSize(label, 8) + 12;
-    this.page.drawRectangle({ x, y: yTop - 12, width: w, height: 12, color: RISK_COLOR[risk] });
+    this.page.drawRectangle({ x, y: yTop - 12, width: w, height: 12, color: risk === "not_checked" ? MUTED : RISK_COLOR[risk] });
     this.page.drawText(label, { x: x + 6, y: yTop - 9, size: 8, font: this.bold, color: rgb(1, 1, 1) });
     return w;
   }
 
   /** A finding: risk pill on the left, text, and its page reference underneath. */
-  item(text: string, risk: Risk | null, source: string) {
-    const indent = 52;
+  item(text: string, risk: Risk | "not_checked" | null, source: string, indent = 52) {
     const lines = this.wrap(text, this.font, 10, CONTENT_W - indent);
     this.ensure(Math.min(lines.length, 3) * 13.8 + 16);
     const top = this.y;
@@ -284,6 +283,10 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
   const headline = L.wrap(report.rating_headline, bold, 11, CONTENT_W - (hx - M)).slice(0, 3);
   headline.forEach((t, i) => L.page.drawText(t, { x: hx, y: L.y - 11 - i * 14, size: 11, font: bold, color: TEXT }));
   L.y -= 24 + (headline.length - 1) * 14;
+  L.text(
+    `Ratings use the traffic light method from our Condo Buyers Guide. Red: ${RISK_ACTION.red.toLowerCase()}. Amber: ${RISK_ACTION.amber.toLowerCase()}. Green: ${RISK_ACTION.green.toLowerCase()}.`,
+    { size: 8.5, color: MUTED, gap: 2 },
+  );
   L.heading("Executive summary");
   L.text(report.summary, { size: 10.5, gap: 8 });
   if (report.priorities?.length) {
@@ -321,6 +324,20 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
     report.form_b.forEach((f) => L.item(`${f.item}: ${f.answer}`, f.risk, cite(f.pages)));
   } else {
     L.text("No Form B Information Certificate was found in the package. Ask the seller for a current Form B before removing subjects.", { gap: 6 });
+  }
+
+  // ---- The guide's Top 20 Red Flags
+  if (report.red_flags?.length) {
+    L.heading("Red flag check: the Condo Buyers Guide's Top 20");
+    L.text(
+      "We checked the package for each of the 20 red flags in our Condo Buyers Guide (Part 12.2). Red means the flag is present, amber means it is partly present or needs an answer, green means the documents we reviewed do not show it, and not checked means the documents needed were missing or unreadable.",
+      { size: 9.5, color: MUTED, gap: 6 },
+    );
+    TOP_RED_FLAGS.forEach((flag, i) => {
+      const row = report.red_flags.find((r) => r.n === i + 1);
+      const status = row?.status ?? "not_checked";
+      L.item(`${i + 1}. ${flag}. ${row?.note ?? "Not assessed."}`, status, row?.pages.length ? cite(row.pages) : "", 70);
+    });
   }
 
   // ---- Sections

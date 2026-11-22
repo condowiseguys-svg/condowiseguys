@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import { askForJson } from "./claude";
-import { DOC_TYPE_LABEL, type ReviewGroup } from "./checklist";
+import { DOC_TYPE_LABEL, RISK_METHOD, type ReviewGroup } from "./checklist";
 import type { Segment } from "./classify";
 import { renderPages, type PackagePage } from "./pages";
 
@@ -27,7 +27,7 @@ export const GroupReviewSchema = z.object({
     z.object({
       title: z.string().describe("A short headline"),
       detail: z.string().describe("Two to four plain-language sentences: what the documents say and why it matters to a buyer"),
-      risk: Risk.describe("red: serious cost or risk; amber: worth attention or a question; green: reassuring"),
+      risk: Risk.describe("Traffic light method: red = stop and think hard; amber = negotiate or protect yourself; green = note and budget"),
       pages: z.array(z.number()).describe("Package pages that support this finding"),
     }),
   ),
@@ -58,9 +58,12 @@ Rules:
 - Focus on what affects the buyer's costs, risks, and use of the unit. Skip routine items that do not matter to a buyer.
 - Prefer the newest information. When documents conflict, say which is newer.
 - Be balanced: include reassuring (green) findings too, not only problems.
+- When the checklist names a red flag and the documents show it, report it as its own finding. When you looked for one of the main red flags and the documents show it is absent (for example no approved levies, no lawsuits), a short green finding is useful.
 - A page reading "[scanned page that could not be read]" is not blank: say it could not be read. Read transcribed scanned pages as carefully as the rest.
 - Separate projections (e.g. a depreciation report's funding model) from decisions owners actually made.
-- When comparing results to a budget, say whether the budget figure is year-to-date or full-year.`;
+- When comparing results to a budget, say whether the budget figure is year-to-date or full-year.
+
+${RISK_METHOD}`;
 
 /** Pages for each group, split so that one request stays well inside the context window. */
 export function groupChunks(group: ReviewGroup, segments: Segment[], pages: PackagePage[], maxChars = 400_000) {

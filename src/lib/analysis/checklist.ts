@@ -57,6 +57,45 @@ export const SATISFIES: Partial<Record<DocType, PackageItemId>> = {
   form_j: "form_j",
 };
 
+/**
+ * The traffic light method from the Condo Buyers Guide (Part 12.1). Every rating in the
+ * review uses these words, so a buyer who read the guide recognizes them in the report.
+ */
+export const RISK_METHOD = `Rate every finding with the traffic light method from the Condo Wise Guys Condo Buyers Guide:
+- red, "stop and think hard": findings that can cost tens of thousands of dollars per unit, or make the home unsuitable for this buyer. Examples: unremediated envelope failure; a large special levy being discussed or approved with payments after completion; major work forecast with a contingency reserve fund (CRF) far short of it; a lawsuit with large exposure; a deductible the buyer is unlikely to be able to insure; a bylaw that rules out how the buyer plans to live.
+- amber, "negotiate or protect yourself": findings with a cost the buyer can estimate, or a question that must be answered before removing subjects. Examples: a roof due in a few years with a partly funded reserve; fee increases forecast in the budget; a plumbing replacement plan in its early stages; a missing document.
+- green, "note and budget": ordinary maintenance and normal aging of a well-funded building, and reassuring findings. Examples: routine repairs, small rule disputes, planned painting paid from the CRF, no levies approved, healthy reserves.`;
+
+export const RISK_ACTION: Record<"red" | "amber" | "green", string> = {
+  red: "Stop and think hard",
+  amber: "Negotiate or protect yourself",
+  green: "Note and budget",
+};
+
+/** The Top 20 Red Flags from the Condo Buyers Guide (Part 12.2), in the guide's order. Every report checks each one. */
+export const TOP_RED_FLAGS = [
+  "Special levy approved, with instalments due after your completion date",
+  "Special levy, loan, or \"funding options\" under discussion in the minutes",
+  "A failed 3/4 vote on a major repair",
+  "No depreciation report, or one more than five years old",
+  "Depreciation report shows the CRF going negative under current funding",
+  "Actual CRF contributions far below the recommended amount",
+  "Repeated water ingress reports from several units",
+  "An engineering investigation of the envelope, balconies, parkade or structure",
+  "Original face-sealed cladding on a 1980s to early 2000s coastal wood-frame building",
+  "Poly-B, Kitec or failing copper piping without a plan",
+  "Major components at or past the end of their life",
+  "A water damage deductible much higher than your policy can cover",
+  "A sharp jump in insurance premiums or deductibles, or insurer conditions for renewal",
+  "Lawsuits, CRT disputes, arbitrations or judgments involving the strata",
+  "Outstanding government work orders",
+  "Operating deficits, large arrears, or a strata loan",
+  "Engineering reports mentioned in the minutes but not provided",
+  "Frequent manager or council turnover, or open conflict between owners and council",
+  "Missing minutes or financial statements",
+  "A bylaw that does not fit your plans for pets, renovations, short-term rental or business use",
+] as const;
+
 export type ReviewGroup = { id: string; title: string; types: DocType[]; checks: string };
 
 /** Documents are reviewed in these groups, each with its own BC checklist. */
@@ -70,7 +109,8 @@ export const REVIEW_GROUPS: ReviewGroup[] = [
 - Note the date of the Form B. A Form B more than a few weeks old may be out of date.
 - Find this strata lot's unit entitlement and the total unit entitlement of the strata (Schedule of Unit Entitlement or Form B attachments), so levies can be estimated for the lot. Report both numbers if found.
 - Check that the strata plan, lot number and address match the order. Note whether the strata has sections (e.g. residential and commercial) and whether section records were provided.
-- For Form J or a rental disclosure, if present: record what it says.`,
+- For Form J or a rental disclosure, if present: record what it says.
+- Red flags from the buyers guide (Part 5.3), each to be reported if present: a CRF balance that looks small for the size and age of the building; any approved special levy, especially with instalments due after the likely completion date; any lawsuit, arbitration, CRT dispute or outstanding work order; an alteration agreement attached to this strata lot; bylaw amendments or 3/4 resolutions not yet filed (say whether their text was provided); no depreciation report, or one more than five years old; parking or storage assigned by council licence or simple assignment rather than as limited common property or a separate strata lot; any answer of "unknown", "to be confirmed", or a blank where a yes or no is expected.`,
   },
   {
     id: "financial",
@@ -85,7 +125,12 @@ export const REVIEW_GROUPS: ReviewGroup[] = [
 - Arrears: owners owing money, and any large receivables.
 - Insurance premium and deductible trends shown in the budget.
 - Special levy accounts and how much is left to collect or spend.
-- Whether statements are audited, reviewed, or management-prepared, and the fiscal year end.`,
+- Whether statements are audited, reviewed, or management-prepared, and the fiscal year end.
+- Legal fees: the amount and whether it is growing from year to year.
+- Repairs and maintenance against budget: large overruns often point to aging equipment or ongoing leaks.
+- Insurance premium trend over two or three years, and whether it is rising much faster than inflation.
+- CRF activity: contributions, spending, interest and closing balance. Does the closing balance agree with the Form B and the depreciation report? Any large unplanned withdrawals?
+- Red flags from the buyers guide (Part 8.4), each to be reported if present: operating deficits in more than one year; large or growing legal fees; insurance costs rising much faster than inflation without an explanation; repairs and maintenance well over budget; CRF contributions below the depreciation report's recommendation, or at the 10% legal minimum in an older building; significant arrears, or one owner owing a large amount; a strata loan, or one being discussed; unaudited statements in a large building with large sums involved, or statements missing altogether.`,
   },
   {
     id: "depreciation",
@@ -97,7 +142,10 @@ export const REVIEW_GROUPS: ReviewGroup[] = [
 - Every major project forecast in the next 10 years with its year and cost, and any special levies the report expects. Give the yearly totals and the 10-year total.
 - Whether the report says levies are likely or unavoidable under current funding, and the annual contribution the model assumes (compare it with the current budget if known).
 - Whether the report is final or marked draft, and any conflicting dates.
-- If the package also contains an older depreciation report, use the newest and say which is older.`,
+- If the package also contains an older depreciation report, use the newest and say which is older.
+- The five numbers from the buyers guide (Part 6.4): the current CRF balance, the recommended annual contribution, the actual annual contribution, the total projected expenditures for the next 10 years, and the lowest projected CRF balance and the year it occurs under the current funding. Report each as a fact.
+- Building envelope type (for example rainscreen, face-sealed stucco, brick, curtain wall) and whether it has been remediated, the roof's age and remaining life, the piping material (copper, Poly-B, Kitec, galvanized, PEX), and the state of elevators, boilers and other major systems.
+- Red flags from the buyers guide (Part 6.6), each to be reported if present: no report, an expired report, or one older than the five-year cycle with no update planned; the status quo scenario goes negative and owners have not adopted a higher contribution; the actual contribution well below the recommended one, year after year; major components (roof, envelope, windows, elevators, boilers, plumbing risers) at or past the end of their expected life; large "repair now" items in the condition assessment (failed sealants, balcony membrane failure, corroded piping, parkade slab deterioration); replacement costs that look stale, not updated for recent construction inflation; components missing from the inventory (for example no building envelope line in an older wood-frame building); council or owners rejecting the planner's recommendations without a plan of their own.`,
   },
   {
     id: "minutes",
@@ -114,7 +162,11 @@ export const REVIEW_GROUPS: ReviewGroup[] = [
 - Warranty (2-5-10 home warranty) items and deadlines for newer buildings.
 - Anything about this specific unit, its floor, or its stack.
 - Fee schedules attached to AGM minutes list each strata lot's unit entitlement and the total unit entitlement. Report this lot's entitlement and the totals.
-- Note the date range the minutes cover and any months that appear to be missing.`,
+- Note the date range the minutes cover and any months that appear to be missing.
+- Search for the buyers guide keywords (Appendix C): leak, water ingress, moisture, mould, flood, sump, backup; envelope, rainscreen, stucco, sealant, membrane, balcony, crack, spalling, rebar, settlement; roof, boiler, elevator, riser, Poly-B, Kitec, galvanized, pinhole, panel, fire alarm, sprinkler; special levy, loan, borrow, shortfall, deficit, arrears; claim, deductible, renewal, premium, appraisal; lawsuit, lawyer, CRT, tribunal, arbitration, lien, demand letter; complaint, harassment, noise, smoking, cannabis, Airbnb, short-term, fine; engineer, assessment, quote, tender, warranty.
+- General meetings: resolutions that failed (especially a failed special levy or 3/4 vote on a major repair), whether owners approved the CRF contribution the depreciation report recommended or cut it, close or contested votes, owners' questions in new business, and meetings that failed to reach quorum.
+- List every engineering, consultant or condition report the minutes refer to (envelope, structural, roofing, elevator, mechanical, electrical, plumbing), with its date and subject, so the report can say whether it was provided.
+- Red flags from the buyers guide (Part 7.5), each to be reported if present: repeated water ingress reports from different units; any engineering investigation of the envelope, balconies, parkade, plumbing or structure; a special levy or loan being discussed, drafted or "brought to owners"; a failed 3/4 vote on a major repair; insurance claims, especially repeated water claims, or insurer warnings about renewal; a sharp increase in premiums or deductibles; legal advice sought, demand letters, CRT claims or lawsuits; frequent turnover of council members or strata managers; unresolved conflict between council and owners, or between neighbours; gaps in the minutes, or minutes so brief they reveal nothing.`,
   },
   {
     id: "bylaws",
@@ -127,7 +179,11 @@ export const REVIEW_GROUPS: ReviewGroup[] = [
 - Insurance deductible chargebacks: whether owners must pay the deductible when damage starts in their unit, and up to what amount.
 - Renovation approvals (especially flooring, plumbing, and electrical), move-in fees, and fines.
 - Use restrictions: home business, parking, storage, EV charging, barbecues, balconies.
-- Whether these appear to be the current consolidated bylaws filed at the Land Title Office, or the Standard Bylaws, and any recent amendments.`,
+- Whether these appear to be the current consolidated bylaws filed at the Land Title Office, or the Standard Bylaws, and any recent amendments.
+- Repair and maintenance responsibility: which parts of the building (windows, doors, balcony membranes, pipes) the bylaws make owners responsible for.
+- Noise and quiet hours, occupancy limits, move-in fees, and fine amounts.
+- Whether council rules have been ratified at a general meeting.
+- Red flags from the buyers guide (Part 9.4), each to be reported if present: a bylaw that conflicts with the buyer's stated plans (pets, renovations, home business, short-term rental income); bylaw amendments passed but not filed, or proposed for the next AGM; frequent fines or bylaw disputes; bylaws placing unusually broad repair or insurance responsibility on owners (windows, balcony membranes, pipes serving other units); outdated rental or age bylaws that the strata still tries to enforce.`,
   },
   {
     id: "insurance",
@@ -137,7 +193,9 @@ export const REVIEW_GROUPS: ReviewGroup[] = [
 - Building coverage amount and whether it is full replacement value. Note the date of the last insurance appraisal.
 - Deductibles for each peril, especially water damage, sewer backup, flood, and earthquake. Earthquake deductibles in BC are often a percentage of the loss.
 - Liability coverage and directors and officers coverage.
-- What this means for the buyer: the minimum condo (unit owner) insurance they should carry to cover deductibles that could be charged back to them.`,
+- What this means for the buyer: the minimum condo (unit owner) insurance they should carry to cover deductibles that could be charged back to them.
+- Named insured (the strata corporation and plan number) and the renewal date.
+- Red flags from the buyers guide (Part 10.3), each to be reported if present: a water damage deductible far above what a typical unit owner policy covers (often $25,000 to $50,000 or more is hard to insure); a large jump in premiums or deductibles at the last renewal; insurer conditions for renewal, such as required repairs; many water claims in the last three years; no recent replacement cost appraisal, or a replacement value that looks low for the building; gaps in coverage, such as no earthquake or flood coverage; a bylaw making owners responsible for deductibles even when they were not at fault.`,
   },
   {
     id: "engineering",
@@ -145,7 +203,12 @@ export const REVIEW_GROUPS: ReviewGroup[] = [
     types: ["engineering_report", "electrical_planning_report"],
     checks: `- Deficiencies found, how urgent they are, and their estimated cost.
 - Whether the strata acted on the recommendations.
-- Electrical planning reports: BC requires most strata corporations with 5 or more lots to obtain one (Metro Vancouver and the Lower Mainland by December 31, 2026; the rest of BC by December 31, 2028). Note its findings on electrical capacity and EV charging, or that none was provided.`,
+- Electrical planning reports: BC requires most strata corporations with 5 or more lots to obtain one (Metro Vancouver and the Lower Mainland by December 31, 2026; the rest of BC by December 31, 2028). Note its findings on electrical capacity and EV charging, or that none was provided.
+- Building envelope: evidence of moisture in wall assemblies, and whether the cladding is face-sealed stucco on a 1980s to early 2000s wood-frame building that has not been remediated.
+- Roofs, balconies and parkades: membrane condition, balcony leaks or rot, parkade slab cracking, spalling or rebar corrosion.
+- Plumbing: Poly-B, Kitec, galvanized or pinhole-prone copper piping, and any replacement plan.
+- Mechanical, elevators and fire safety: systems past their expected life, and fire safety deficiencies carried over from one annual inspection to the next.
+- Red flags from the buyers guide (Part 11.8), each to be reported if present: any report recommending major work without a funding plan; moisture in wall assemblies or unremediated face-sealed stucco on an older wood-frame building; Poly-B, Kitec or failing copper piping without a plan; parkade slab deterioration; elevators or boilers past their expected life with no replacement budget; fire safety deficiencies left uncorrected; an electrical planning report showing a service upgrade is required, with no funding plan.`,
   },
   {
     id: "other",

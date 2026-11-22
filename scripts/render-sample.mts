@@ -48,6 +48,12 @@ const report: Report = {
     { id: "financial", intro: "Sample intro.", items: [item("Operating surplus of $12,400.", "green", [396])] },
     { id: "minutes", intro: "Sample intro.", items: [item("Two leaks in the 04 stack in 2024.", "amber", [55, 88])] },
   ],
+  red_flags: [
+    { n: 1, status: "green", note: "No special levy approved on the Form B.", pages: [3] },
+    { n: 5, status: "red", note: "The report models the CRF going below zero in 2028 at the current contribution.", pages: [433] },
+    { n: 12, status: "amber", note: "Water damage deductible is $50,000.", pages: [403] },
+    { n: 19, status: "not_checked", note: "Financial statements were not in the package.", pages: [] },
+  ],
   missing_documents: [{ document: "Insurance certificate", why_it_matters: "Needed to confirm deductibles." }],
   questions: ["What is this unit’s share of the 2027 roof project?", "Have the 2024 leaks been repaired?"],
   service_signals: { depreciation_report: "current", insurance_appraisal: "out_of_date" },
