@@ -57,8 +57,9 @@ const levies = [
 
 const sections = [
   "Cover and scope, including documents missing from the package",
-  "Executive summary with the overall rating and top findings",
+  "Executive summary with the overall red, amber or green rating and top findings",
   "Form B, line by line",
+  "Red flag check: each of the Top 20 Red Flags from our Condo Buyers Guide",
   "Financial health: budget, fees, operating results, reserves",
   "Depreciation report and estimated special levies for the unit",
   "Meeting minutes: projects, leaks, disputes",
