@@ -7,6 +7,7 @@ const links = [
   { href: "/sample-report", label: "Sample report" },
   { href: "/#pricing", label: "Pricing" },
   { href: "/for-realtors", label: "For realtors" },
+  { href: "/about", label: "About" },
 ];
 
 export function SiteHeader() {
@@ -26,7 +27,7 @@ export function SiteHeader() {
             Condo Wise Guys
           </span>
         </Link>
-        <nav className="hidden items-center gap-6 text-sm text-silver-200 md:flex">
+        <nav className="hidden items-center gap-6 whitespace-nowrap text-sm text-silver-200 lg:flex">
           {links.map((l) => (
             <Link key={l.href} href={l.href} className="hover:text-white">
               {l.label}
