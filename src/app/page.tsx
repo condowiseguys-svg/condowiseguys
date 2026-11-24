@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { RiskBadge, type Risk } from "@/components/RiskBadge";
-import { formatPrice, founder, rushAddOn, sisterCompany, sisterLink, tiers } from "@/lib/site";
+import { buyersGuide, formatPrice, founder, rushAddOn, sisterCompany, sisterLink, tiers } from "@/lib/site";
 
 const previewFindings: { text: string; risk: Risk }[] = [
   {
@@ -210,6 +210,37 @@ export default function Home() {
                 </p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Free guide */}
+      <section className="bg-white">
+        <div className="mx-auto max-w-6xl px-4 pt-16 sm:px-6 md:pt-20">
+          <div className="flex flex-col items-center gap-8 rounded-2xl bg-brand-100 p-6 sm:flex-row sm:p-8">
+            <Image
+              src={buyersGuide.coverPath}
+              alt={`Cover of the ${buyersGuide.title}`}
+              width={480}
+              height={622}
+              className="w-32 shrink-0 rounded shadow-lg ring-1 ring-black/10"
+            />
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">Free download</p>
+              <h2 className="mt-1 text-2xl font-bold text-navy-900">
+                The {buyersGuide.title}: {buyersGuide.subtitle.toLowerCase()}
+              </h2>
+              <p className="mt-2 leading-7 text-slate-700">
+                Our {buyersGuide.pages}-page guide to Form B, depreciation reports, minutes and the
+                red flags to watch for. Free to download, and included with every review.
+              </p>
+              <Link
+                href={buyersGuide.pagePath}
+                className="mt-4 inline-block rounded-lg bg-navy-900 px-5 py-2.5 font-semibold text-white hover:bg-navy-800"
+              >
+                Get the free guide
+              </Link>
+            </div>
           </div>
         </div>
       </section>
