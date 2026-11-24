@@ -75,8 +75,8 @@ const documents = [
 
 const faqs = [
   {
-    q: "Is this legal advice or a home inspection?",
-    a: "No. It is a careful review of the strata documents, written for buyers. We recommend you also use a lawyer or notary, a home inspector and an insurance broker.",
+    q: "Is this a home inspection or legal advice?",
+    a: "No. It is a careful review of the strata documents you provide, written for buyers. We do not visit or inspect the property, so it is not a home, structural, mould or environmental inspection, and it is not legal advice or an appraisal. We recommend you also use a lawyer or notary, a home inspector and an insurance broker, and a qualified professional for any structural, mould or environmental concerns.",
   },
   {
     q: "Which properties do you review?",

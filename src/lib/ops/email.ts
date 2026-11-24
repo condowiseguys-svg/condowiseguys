@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { reviewScope } from "@/lib/site";
 import { logEvent } from "./events";
 
 export type EmailResult = "sent" | "already_sent" | "not_configured";
@@ -117,5 +118,5 @@ export function emailHtml(paragraphs: string[], link?: { href: string; label: st
     : "";
   return `<div style="font-family:Inter,Arial,sans-serif;color:#0f172a;line-height:1.6;max-width:560px">
 <p style="font-weight:700;color:#05153a;font-size:18px;margin:0 0 24px">Condo Wise Guys</p>${body}${button}
-<p style="color:#64748b;font-size:13px;margin-top:32px">Our reports are document reviews, not legal advice, a home inspection or an appraisal.</p></div>`;
+<p style="color:#64748b;font-size:13px;margin-top:32px">${escapeHtml(reviewScope.line)}</p></div>`;
 }

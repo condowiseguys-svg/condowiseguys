@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { orderingEnabled } from "@/lib/config";
 import { isStripeTestMode } from "@/lib/stripe";
-import { formatPrice, orderPriceCents, rushAddOn, site, tiers } from "@/lib/site";
+import { formatPrice, orderPriceCents, reviewScope, rushAddOn, site, tiers } from "@/lib/site";
 import { OrderForm } from "./OrderForm";
 
 export const metadata: Metadata = {
@@ -39,6 +39,18 @@ export default async function Order({
             Payment was cancelled and you have not been charged. You can try again below.
           </p>
         )}
+
+        <section
+          aria-labelledby="scope-heading"
+          className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-6 text-slate-700"
+        >
+          <h2 id="scope-heading" className="font-semibold text-navy-900">
+            What the review covers: the documents only
+          </h2>
+          {reviewScope.full.map((p) => (
+            <p key={p} className="mt-2">{p}</p>
+          ))}
+        </section>
 
         {enabled ? (
           <div className="mt-8 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">

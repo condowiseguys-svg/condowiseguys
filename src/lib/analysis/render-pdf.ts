@@ -1,5 +1,5 @@
 import { PDFDocument, PDFName, PDFString, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
-import { founder, sisterCompany, sisterLink } from "@/lib/site";
+import { founder, reviewScope, sisterCompany, sisterLink } from "@/lib/site";
 import { DOC_TYPE_LABEL, RISK_ACTION, TOP_RED_FLAGS } from "./checklist";
 import type { Segment } from "./classify";
 import { SECTION_IDS, SECTION_TITLES, type Report } from "./compose";
@@ -274,6 +274,21 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
     L.y -= 32;
   }
 
+  // ---- Scope notice: documents only (kept on the cover so no reader misses it)
+  L.y -= 4;
+  {
+    const pad = 10;
+    const size = 8.5;
+    const lh = size * 1.38;
+    const lines = [reviewScope.full.join(" ")].flatMap((t) => L.wrap(L.clean(t, font), font, size, CONTENT_W - 2 * pad));
+    const boxH = pad + 13 + lines.length * lh + pad - 3;
+    L.ensure(boxH + 8);
+    L.page.drawRectangle({ x: M, y: L.y - boxH, width: CONTENT_W, height: boxH, color: rgb(0.96, 0.97, 0.99), borderColor: RULE, borderWidth: 0.8 });
+    L.page.drawText("Scope: a review of the documents only", { x: M + pad, y: L.y - pad - 9, size: 9.5, font: bold, color: NAVY });
+    lines.forEach((t, i) => L.page.drawText(t, { x: M + pad, y: L.y - pad - 13 - size - i * lh, size, font, color: TEXT }));
+    L.y -= boxH + 8;
+  }
+
   // ---- Rating and summary
   L.y -= 6;
   L.ensure(40);
@@ -389,7 +404,7 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
   L.text(
     `This report summarizes the strata documents provided to Condo Wise Guys for this property. It was prepared with the help of AI and ${
       meta.tier === "expert" ? "checked by our reviewer before delivery" : "quality checked against our BC strata checklist"
-    }. ${meta.ocrPages ? `${meta.ocrPages} scanned pages were read by text recognition, which can misread numbers; check important figures against the source page. ` : ""}It relies on the documents as given: anything not in the package, or changed since, is not covered. It is not a legal opinion, a building inspection, an appraisal, or financial advice. Before removing subjects, confirm important points with the strata manager, and consider advice from a lawyer, notary, or home inspector. Page references are to the PDF pages of the package you provided.`,
+    }. ${meta.ocrPages ? `${meta.ocrPages} scanned pages were read by text recognition, which can misread numbers; check important figures against the source page. ` : ""}${reviewScope.full.join(" ")} Before removing subjects, confirm important points with the strata manager, and consider advice from a lawyer, notary, home inspector, or (for structural, mould or environmental concerns) a qualified engineer or environmental professional. Page references are to the PDF pages of the package you provided.`,
     { size: 9, color: MUTED, gap: 6 },
   );
   L.text(
@@ -406,6 +421,7 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
     p.drawText(left, { x: M, y: 28, size: 8, font, color: MUTED });
     const right = `Page ${i + 1} of ${pages.length}`;
     p.drawText(right, { x: W - M - font.widthOfTextAtSize(right, 8), y: 28, size: 8, font, color: MUTED });
+    p.drawText(L.clean(reviewScope.line, font), { x: M, y: 17, size: 7, font, color: MUTED });
   });
 
   return doc.save();

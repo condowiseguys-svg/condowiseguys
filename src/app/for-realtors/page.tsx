@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { site, sisterCompany, sisterLink } from "@/lib/site";
+import { reviewScope, site, sisterCompany, sisterLink } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "For realtors: strata document reviews for your buyers",
@@ -81,8 +81,7 @@ export default function ForRealtorsPage() {
             ))}
           </ol>
           <p className="mt-6 text-sm leading-6 text-slate-500">
-            Our reports are document reviews. They are not legal advice, a home inspection or an
-            appraisal. Questions:{" "}
+            {reviewScope.short} Questions:{" "}
             <a className="underline" href={`mailto:${site.email}`}>{site.email}</a>.
           </p>
         </div>
