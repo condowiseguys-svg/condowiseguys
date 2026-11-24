@@ -4,7 +4,8 @@ import { recordCost } from "@/lib/ops/costs";
 import { emailHtml, escapeHtml, sendEmailOnce } from "@/lib/ops/email";
 import { notifyAdmin } from "@/lib/ops/notify";
 import { logEvent, raiseIssue, resolveIssues } from "@/lib/ops/events";
-import { payLink, uploadLink } from "@/lib/ops/urls";
+import { payLink, upgradeLink, uploadLink } from "@/lib/ops/urls";
+import { upgradeOffer } from "@/lib/site";
 import { stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -59,7 +60,7 @@ export async function markPaidFromSession(session: Stripe.Checkout.Session) {
     .eq("id", orderId)
     .eq("stripe_session_id", session.id)
     .in("status", ["pending_payment", "payment_failed"])
-    .select("id, upload_token, buyer_name, buyer_email, property_address");
+    .select("id, upload_token, buyer_name, buyer_email, property_address, tier");
   if (error) throw error;
   const paid = data?.[0];
   if (paid) {
@@ -79,11 +80,18 @@ export async function markPaidFromSession(session: Stripe.Checkout.Session) {
 
 /** Thanks the buyer and gives them their upload link. Never throws: payment is already recorded. */
 async function sendBuyerConfirmation(
-  order: { id: string; upload_token: string; buyer_name: string; buyer_email: string; property_address: string },
+  order: { id: string; upload_token: string; buyer_name: string; buyer_email: string; property_address: string; tier: string },
   session: Stripe.Checkout.Session,
 ) {
   try {
     const link = uploadLink(order.id, order.upload_token);
+    // Standard buyers hear from the start that they can move up to Expert and keep what they paid.
+    const upgradeUrl = upgradeLink(order.id, order.upload_token);
+    const upgradeHtml =
+      order.tier === "standard"
+        ? [`${escapeHtml(upgradeOffer.short)} <a href="${upgradeUrl}">Upgrade to Expert Reviewed</a>.`]
+        : [];
+    const upgradeText = order.tier === "standard" ? `\n${upgradeOffer.short} Upgrade here: ${upgradeUrl}\n` : "";
     const amount = `$${((session.amount_total ?? 0) / 100).toFixed(2)} ${(session.currency ?? "cad").toUpperCase()}`;
     await sendEmailOnce({
       key: `order-confirmed:${session.id}`,
@@ -97,10 +105,11 @@ async function sendBuyerConfirmation(
           `Thanks for your order. We received your payment of <strong>${escapeHtml(amount)}</strong> for the review of <strong>${escapeHtml(order.property_address)}</strong>.`,
           "If you haven't uploaded your strata documents yet, use the button below. You can come back to this link any time.",
           `Your order number is ${escapeHtml(order.id.slice(0, 8))}.`,
+          ...upgradeHtml,
         ],
         { href: link, label: "Upload documents" },
       ),
-      text: `Thanks for your order for ${order.property_address} (${amount}). Upload your documents here: ${link}\nOrder number: ${order.id.slice(0, 8)}\n`,
+      text: `Thanks for your order for ${order.property_address} (${amount}). Upload your documents here: ${link}\nOrder number: ${order.id.slice(0, 8)}\n${upgradeText}`,
     });
   } catch (err) {
     console.error("order confirmation email failed", order.id, err);
@@ -193,11 +202,33 @@ async function orderIdForPaymentIntent(paymentIntent: string | null | undefined)
   return (data?.id as string | undefined) ?? null;
 }
 
+/** The order a Standard-to-Expert upgrade payment belongs to, if any. */
+async function orderIdForUpgradePayment(paymentIntent: string | null | undefined) {
+  if (!paymentIntent) return null;
+  const { data, error } = await supabaseAdmin()
+    .from("orders")
+    .select("id")
+    .eq("upgrade_payment_intent", paymentIntent)
+    .maybeSingle();
+  if (error) return null; // "Step 7 - upgrades.sql" not run yet, so there are no upgrades.
+  return (data?.id as string | undefined) ?? null;
+}
+
 /** Refund issued (from the Stripe dashboard). Fully refunded orders stop. */
 export async function markRefunded(charge: Stripe.Charge) {
   const pi = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
   const orderId = await orderIdForPaymentIntent(pi);
-  if (!orderId) return;
+  if (!orderId) {
+    // A refund of an upgrade payment: the original Standard payment still stands, so the order
+    // stays open. Brian decides what to send (he issued the refund).
+    const upgraded = await orderIdForUpgradePayment(pi);
+    if (upgraded) {
+      await logEvent(upgraded, "stripe", charge.amount_refunded >= charge.amount ? "upgrade_refunded" : "upgrade_partially_refunded", {
+        amount_refunded: charge.amount_refunded,
+      });
+    }
+    return;
+  }
   const full = charge.amount_refunded >= charge.amount;
   if (full) {
     await supabaseAdmin()
@@ -211,7 +242,7 @@ export async function markRefunded(charge: Stripe.Charge) {
 
 export async function markDisputed(dispute: Stripe.Dispute) {
   const pi = typeof dispute.payment_intent === "string" ? dispute.payment_intent : dispute.payment_intent?.id;
-  const orderId = await orderIdForPaymentIntent(pi);
+  const orderId = (await orderIdForPaymentIntent(pi)) ?? (await orderIdForUpgradePayment(pi));
   if (!orderId) return;
   await raiseIssue({
     orderId,

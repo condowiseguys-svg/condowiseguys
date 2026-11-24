@@ -20,6 +20,8 @@ export type DashboardOrder = {
   documents_checked_at: string | null;
   delivered_at: string | null;
   updated_at: string;
+  /** Set once "Step 7 - upgrades.sql" has run and the buyer upgraded to Expert. */
+  upgrade_amount_cents?: number | null;
 };
 
 export type Attention = { level: "urgent" | "action" | "watch"; reason: string };
@@ -65,7 +67,8 @@ export async function loadDashboard() {
   const { data: orders, error } = await db
     .from("orders")
     .select(
-      "id, created_at, updated_at, status, tier, rush, amount_cents, buyer_name, buyer_email, property_address, unit_number, subject_removal_date, paid_at, submitted_at, processing_started_at, documents_checked_at, delivered_at",
+      // "*" so this keeps working before "Step 7 - upgrades.sql" adds upgrade_amount_cents.
+      "*",
     )
     .neq("status", "pending_payment")
     .order("created_at", { ascending: false })
@@ -87,7 +90,7 @@ export async function loadDashboard() {
     const orderIssues = (issues ?? []).filter((i) => i.order_id === o.id);
     const lines = (costs ?? []).filter((c) => c.order_id === o.id) as OrderCostLine[];
     const cost = costCad(lines);
-    const revenue = ["refunded", "cancelled", "payment_failed"].includes(o.status) ? 0 : o.amount_cents;
+    const revenue = ["refunded", "cancelled", "payment_failed"].includes(o.status) ? 0 : o.amount_cents + (o.upgrade_amount_cents ?? 0);
     return {
       order: o,
       attention: attentionFor(o, orderIssues),

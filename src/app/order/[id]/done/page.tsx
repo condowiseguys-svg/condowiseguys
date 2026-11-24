@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getOrderWithToken } from "@/lib/orders";
-import { site, tiers } from "@/lib/site";
+import { site, tiers, upgradeOffer } from "@/lib/site";
 
 export const metadata: Metadata = { title: "Order received", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -39,6 +39,18 @@ export default async function DonePage({
           </a>{" "}
           and mention your order number: <span className="font-mono text-sm">{order.id.slice(0, 8)}</span>.
         </p>
+        {order.tier === "standard" && (
+          <div className="mt-8 rounded-xl bg-white p-5 ring-1 ring-slate-200">
+            <h2 className="font-semibold text-navy-900">Upgrade to Expert Reviewed any time</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{upgradeOffer.long}</p>
+            <Link
+              href={`/order/${order.id}/upgrade?token=${token}`}
+              className="mt-4 inline-block rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-500"
+            >
+              Upgrade to Expert Reviewed
+            </Link>
+          </div>
+        )}
         <Link href="/" className="mt-8 inline-block font-semibold text-brand-600 hover:underline">
           Back to home
         </Link>
