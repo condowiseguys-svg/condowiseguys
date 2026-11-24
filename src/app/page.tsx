@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { RiskBadge, type Risk } from "@/components/RiskBadge";
-import { buyersGuide, formatPrice, founder, rushAddOn, sisterCompany, sisterLink, tiers } from "@/lib/site";
+import { buyersGuide, formatPrice, founder, rushAddOn, sisterCompany, sisterLink, tiers, upgradeOffer } from "@/lib/site";
 
 const previewFindings: { text: string; risk: Risk }[] = [
   {
@@ -93,6 +93,10 @@ const faqs = [
   {
     q: "How is the special levy estimate worked out?",
     a: "We take the costs and levies forecast in the strata's own depreciation report and minutes and apply your unit's share of unit entitlement. It is an estimate, and the report explains what it depends on.",
+  },
+  {
+    q: "Can I start with Standard and upgrade later?",
+    a: `Yes. You can upgrade to Expert Reviewed at any time, before or after your Standard report arrives (up to ${upgradeOffer.daysAfterDelivery} days after delivery), and you pay only the difference: what you paid for Standard is credited in full. We use the documents you already sent, Brian checks the report personally, and you get a call with him to talk through the findings. The upgrade link is in your order emails.`,
   },
 ];
 
@@ -307,6 +311,11 @@ export default function Home() {
             ))}
           </div>
           <p className="mt-6 text-sm text-slate-600">
+            <span className="font-semibold text-navy-900">Upgrade any time:</span>{" "}
+            {upgradeOffer.short} Your documents carry over, and the upgrade includes a call with Brian
+            to talk through the findings.
+          </p>
+          <p className="mt-3 text-sm text-slate-600">
             <span className="font-semibold text-navy-900">
               {rushAddOn.name} add-on:
             </span>{" "}
@@ -334,7 +343,8 @@ export default function Home() {
               since 1986, starting at CMHC, and has prepared depreciation
               reports for BC strata corporations since 2012. On Expert Reviewed
               orders he checks every finding, edits the report and adds his own
-              notes before it reaches you.
+              notes before it reaches you, then talks the findings through with
+              you on a call.
             </p>
             <p className="mt-4 leading-7 text-silver-200">
               Brian also runs{" "}

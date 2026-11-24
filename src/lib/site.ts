@@ -137,16 +137,39 @@ export const tiers: Tier[] = [
     testPriceCad: 349,
     turnaround: "1 to 2 business days",
     summary:
-      "Everything in Standard, with every finding checked and edited by Brian before delivery.",
+      "Everything in Standard, with every finding checked and edited by Brian before delivery, and a call with Brian to talk it through.",
     features: [
       "Everything in Standard Review",
       "Personally reviewed by Brian before it is sent",
       "Written notes on the issues that matter most",
+      "A call with Brian to talk through the findings",
       "Follow-up questions answered by email",
     ],
     highlight: true,
   },
 ];
+
+/**
+ * Standard buyers can move up to Expert Reviewed at any time, paying only the difference: what
+ * they paid is credited in full. The upgrade reuses the documents already uploaded and goes to
+ * Brian's review queue. It is open while we still hold the documents (90 days after delivery).
+ */
+export const upgradeOffer = {
+  /** One line for the pricing and order pages. */
+  short:
+    "Start with Standard and upgrade to Expert Reviewed any time. You pay only the difference: what you paid for Standard is credited in full.",
+  /** Longer version for the report email and the upgrade page. */
+  long: "Want Brian to check your report and talk it through with you? Upgrade to Expert Reviewed and pay only the difference: what you paid for your Standard review is credited in full. There's nothing to upload again. Brian reviews your documents and report, sends you the checked Expert report, and sets up a call to go through the findings with you.",
+  /** How long after delivery an upgrade stays open (documents are deleted after this). */
+  daysAfterDelivery: 90,
+};
+
+/** What a Standard order pays to become Expert Reviewed: today's Expert price less what was paid. */
+export function upgradePriceCents(order: { rush: boolean; amount_cents: number }, testMode: boolean): number | null {
+  const expert = orderPriceCents("expert", order.rush, testMode);
+  if (expert === null) return null;
+  return Math.max(0, expert - order.amount_cents);
+}
 
 export const rushAddOn = {
   name: "Rush",

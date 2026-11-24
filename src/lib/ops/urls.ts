@@ -12,3 +12,7 @@ export function uploadLink(orderId: string, token: string) {
 export function payLink(orderId: string, token: string) {
   return `${siteUrl()}/order/${orderId}/pay?token=${token}`;
 }
+
+export function upgradeLink(orderId: string, token: string) {
+  return `${siteUrl()}/order/${orderId}/upgrade?token=${token}`;
+}

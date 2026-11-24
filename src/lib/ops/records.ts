@@ -1,10 +1,10 @@
 import { hasMarketingConsent } from "@/lib/marketing";
-import { buyersGuide, site, sisterCompany, sisterLink } from "@/lib/site";
+import { buyersGuide, site, sisterCompany, sisterLink, upgradeOffer } from "@/lib/site";
 import { DOCUMENTS_BUCKET, RECORDS_BUCKET, supabaseAdmin } from "@/lib/supabase/admin";
 import { emailHtml, escapeHtml, sendEmailOnce } from "./email";
 import { logEvent, raiseIssue } from "./events";
 import { canonicalJson, sha256 } from "./hash";
-import { siteUrl } from "./urls";
+import { siteUrl, upgradeLink } from "./urls";
 
 export type ManifestEntry = {
   document_id: string;
@@ -237,11 +237,15 @@ export async function deliverReport(orderId: string) {
   const db = supabaseAdmin();
   const { data: order } = await db
     .from("orders")
-    .select("id, status, buyer_name, buyer_email, property_address, approved_report_id")
+    // "*" so this keeps working before "Step 7 - upgrades.sql" adds upgraded_at.
+    .select("*")
     .eq("id", orderId)
     .single();
   if (!order) throw new Error("Order not found");
   if (order.status === "delivered") return "already_delivered" as const;
+  // The buyer upgraded to Expert while this Standard report was on its way. The order is back
+  // in Brian's queue and the Expert report goes out instead, so there is nothing to retry.
+  if (order.upgraded_at && order.status !== "approved") return "upgraded" as const;
   if (order.status !== "approved" || !order.approved_report_id) {
     throw new Error(`Order is "${order.status}", not approved`);
   }
@@ -275,6 +279,20 @@ export async function deliverReport(orderId: string) {
   const promoText = promo
     ? `\nNeed an appraisal? Our sister company ${sisterCompany.name} (same owner) provides market value appraisals, strata insurance appraisals and depreciation reports in BC: ${sisterLink("report_email")}\n\nYou're getting this note because you asked for offers from DreamHomeGroup.ca. Reply "unsubscribe" to stop. ${site.name}, ${site.mailingAddress}\n`
     : "";
+  // Standard: remind the buyer they can still move up to Expert and keep what they paid.
+  // Expert: invite them to set up the call with Brian that comes with it.
+  const standard = order.tier === "standard";
+  const upgradeUrl = upgradeLink(order.id, order.upload_token);
+  const upgradeDays = upgradeOffer.daysAfterDelivery;
+  const tierHtml = standard
+    ? [
+        `${escapeHtml(upgradeOffer.long)} You can upgrade any time in the next ${upgradeDays} days, while we still hold your documents.`,
+        `<a href="${upgradeUrl}" style="display:inline-block;background:#1e5bd8;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Upgrade to Expert Reviewed</a>`,
+      ]
+    : ["Your report was checked personally by Brian. Reply to this email to set up a call with him to talk through the findings."];
+  const tierText = standard
+    ? `${upgradeOffer.long} You can upgrade any time in the next ${upgradeDays} days: ${upgradeUrl}`
+    : "Your report was checked personally by Brian. Reply to this email to set up a call with him to talk through the findings.";
   const result = await sendEmailOnce({
     key: `report:${version.id}`,
     orderId,
@@ -291,9 +309,10 @@ export async function deliverReport(orderId: string) {
       `Your review of <strong>${escapeHtml(order.property_address)}</strong> is attached.`,
       guideHtml,
       "Reply to this email if you have any questions about what we found.",
+      ...tierHtml,
       ...promoHtml,
     ]),
-    text: `Hi ${first},\n\nYour review of ${order.property_address} is attached.\n\n${guideText}\n\nReply to this email if you have any questions.\n${promoText}`,
+    text: `Hi ${first},\n\nYour review of ${order.property_address} is attached.\n\n${guideText}\n\nReply to this email if you have any questions.\n\n${tierText}\n${promoText}`,
   });
 
   if (result === "not_configured") {

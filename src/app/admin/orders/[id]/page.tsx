@@ -79,6 +79,8 @@ export default async function AdminOrderPage({
   const openIssues = (issues.data ?? []).filter((i) => !i.resolved_at);
   const canApprove = ["processing", "in_review"].includes(order.status);
   const canAsk = ["processing", "in_review"].includes(order.status);
+  // What the buyer paid in total, including a Standard-to-Expert upgrade.
+  const paidCents = order.amount_cents + (order.upgrade_amount_cents ?? 0);
 
   return (
     <div className="space-y-6">
@@ -102,8 +104,14 @@ export default async function AdminOrderPage({
             {order.unit_number ? `Unit ${order.unit_number} · ` : ""}
             {order.strata_plan ? `${order.strata_plan} · ` : ""}
             {tier?.name}
-            {order.rush ? " + Rush" : ""} · {money(order.amount_cents)} · order {order.id.slice(0, 8)}
+            {order.rush ? " + Rush" : ""} · {money(paidCents)} · order {order.id.slice(0, 8)}
           </p>
+          {order.upgraded_at && (
+            <p className="mt-1 text-sm font-medium text-brand-600">
+              Upgraded from Standard on {when(order.upgraded_at)}: paid {money(order.amount_cents)} + {money(order.upgrade_amount_cents ?? 0)} upgrade.
+              The buyer expects your check and a call to go through the findings.
+            </p>
+          )}
           <p className="mt-1 text-sm text-slate-600">
             {order.buyer_name} · {order.buyer_email}
             {order.buyer_phone ? ` · ${order.buyer_phone}` : ""}
@@ -259,7 +267,7 @@ export default async function AdminOrderPage({
             </tbody>
           </table>
         )}
-        <p className="mt-2 text-xs text-slate-500">Margin: {money(order.amount_cents - totalCost)}</p>
+        <p className="mt-2 text-xs text-slate-500">Margin: {money(paidCents - totalCost)}</p>
       </Card>
 
       <Card title="History">

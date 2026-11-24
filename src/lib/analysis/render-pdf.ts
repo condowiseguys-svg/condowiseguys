@@ -4,6 +4,7 @@ import { DOC_TYPE_LABEL, RISK_ACTION, TOP_RED_FLAGS } from "./checklist";
 import type { Segment } from "./classify";
 import { SECTION_IDS, SECTION_TITLES, type Report } from "./compose";
 import { LOGO_JPEG_BASE64 } from "./logo";
+import { upgradeOffer } from "@/lib/site";
 
 export type ReportMeta = {
   orderId: string;
@@ -363,6 +364,15 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
   // ---- Questions
   L.heading("Questions to ask before removing subjects");
   report.questions.forEach((q, i) => L.text(`${i + 1}. ${q}`, { gap: 4 }));
+
+  // ---- Standard only: the buyer can still move up to Expert and keep what they paid
+  if (meta.tier === "standard") {
+    L.heading("Upgrade to Expert Reviewed");
+    L.text(
+      `${upgradeOffer.long} You can upgrade any time within ${upgradeOffer.daysAfterDelivery} days of receiving this report, while we still hold your documents. Use the Upgrade link in the email that delivered this report, or reply to that email and quote order reference ${meta.orderId.slice(0, 8)}.`,
+      { gap: 6 },
+    );
+  }
 
   // ---- Related services (same owner, disclosed)
   L.heading("Related services from our sister company");

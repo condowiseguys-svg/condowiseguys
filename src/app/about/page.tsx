@@ -77,8 +77,9 @@ export default function AboutPage() {
         <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
           <h2 className="text-3xl font-bold tracking-tight">Want Brian to check your review?</h2>
           <p className="mt-4 text-lg leading-8 text-silver-200">
-            Choose Expert Reviewed when you order, and Brian checks every finding before the report
-            is sent. For appraisals and depreciation reports, visit our sister company,{" "}
+            Choose Expert Reviewed when you order, or upgrade from Standard later and pay only the
+            difference. Brian checks every finding before the report is sent, then talks the findings
+            through with you on a call. For appraisals and depreciation reports, visit our sister company,{" "}
             <a href={sisterLink("about")} className="font-semibold text-white underline">
               {sisterCompany.name}
             </a>

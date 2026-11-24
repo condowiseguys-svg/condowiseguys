@@ -3,6 +3,10 @@ import type Stripe from "stripe";
 import { markCheckoutExpired, markDisputed, markPaidFromSession, markPaymentFailed, markRefunded } from "@/lib/orders";
 import { stripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { markUpgradePaid, UPGRADE_PURPOSE } from "@/lib/upgrade";
+
+// The upgrade step can start processing on this server after the response (no Trigger.dev).
+export const maxDuration = 300;
 
 // Stripe sends payment events here. In Stripe: Developers > Webhooks > Add endpoint
 // https://<site>/api/stripe/webhook with the events listed in HANDLED below.
@@ -41,9 +45,13 @@ export async function POST(req: Request) {
   try {
     switch (event.type) {
       case "checkout.session.completed":
-      case "checkout.session.async_payment_succeeded":
-        await markPaidFromSession(event.data.object as Stripe.Checkout.Session);
+      case "checkout.session.async_payment_succeeded": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        // A Standard-to-Expert upgrade is a second payment on an order that is already paid.
+        if (session.metadata?.purpose === UPGRADE_PURPOSE) await markUpgradePaid(session);
+        else await markPaidFromSession(session);
         break;
+      }
       case "checkout.session.async_payment_failed":
         await markPaymentFailed(event.data.object as Stripe.Checkout.Session);
         break;
