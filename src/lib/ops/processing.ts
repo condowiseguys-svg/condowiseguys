@@ -1,78 +1,66 @@
-import { DOCUMENTS_BUCKET, supabaseAdmin } from "@/lib/supabase/admin";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { emailHtml, escapeHtml, sendEmailOnce } from "./email";
 import { logEvent, raiseIssue } from "./events";
-import { checkFile } from "./file-checks";
+import { checkDocument, unpackArchive, type DocRow } from "@/lib/uploads/prepare";
 import { sha256 } from "./hash";
 import { uploadLink } from "./urls";
 
-type DocRow = {
-  id: string;
-  storage_path: string;
-  file_name: string;
-  sha256: string | null;
-  check_status: string;
-  check_detail: string | null;
-};
-
 export type DocumentProblem = { documentId: string; fileName: string; detail: string };
 
-function mimeFor(name: string) {
-  const ext = name.toLowerCase().split(".").pop();
-  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
-  if (ext === "png") return "image/png";
-  return "application/pdf";
+/** Statuses that need nothing from the buyer. */
+const SETTLED = new Set(["ok", "duplicate", "archive"]);
+
+async function loadDocs(orderId: string) {
+  const { data, error } = await supabaseAdmin()
+    .from("order_documents")
+    .select("id, order_id, created_at, storage_path, file_name, size_bytes, sha256, check_status, check_detail, kind, parent_id")
+    .eq("order_id", orderId)
+    .order("created_at");
+  if (error) throw error;
+  return (data ?? []) as DocRow[];
 }
 
 /**
- * Fingerprints and checks every document that hasn't been checked yet.
+ * Fingerprints and checks every document that hasn't been checked yet, and unpacks any ZIP
+ * that hasn't been unpacked (normally both already happened while the buyer was uploading).
+ * Then makes sure each distinct document is reviewed once, however many times it was uploaded.
  * Safe to re-run: a checked document keeps its result and its SHA-256 never changes.
  */
 export async function checkOrderDocuments(orderId: string) {
   const db = supabaseAdmin();
-  const { data, error } = await db
-    .from("order_documents")
-    .select("id, storage_path, file_name, sha256, check_status, check_detail")
-    .eq("order_id", orderId)
-    .order("created_at");
-  if (error) throw error;
-  const docs = (data ?? []) as DocRow[];
-  const problems: DocumentProblem[] = [];
+  let docs = await loadDocs(orderId);
+  const archives = docs.filter((d) => d.kind === "archive" && d.check_status === "pending");
+  for (const a of archives) await unpackArchive(a);
+  if (archives.length) docs = await loadDocs(orderId);
 
   for (const doc of docs) {
-    let status = doc.check_status;
-    let detail = doc.check_detail;
-    if (status === "pending" || !doc.sha256) {
-      const { data: blob, error: dlError } = await db.storage.from(DOCUMENTS_BUCKET).download(doc.storage_path);
-      if (dlError || !blob) {
-        status = "unreadable";
-        detail = "The upload did not finish. Please upload this file again.";
-        await db
-          .from("order_documents")
-          .update({ check_status: status, check_detail: detail, checked_at: new Date().toISOString() })
-          .eq("id", doc.id);
-      } else {
-        const bytes = new Uint8Array(await blob.arrayBuffer());
-        const result = await checkFile(bytes, blob.type || mimeFor(doc.file_name));
-        status = result.status;
-        detail = result.detail;
-        await db
-          .from("order_documents")
-          .update({
-            sha256: doc.sha256 ?? sha256(bytes),
-            size_bytes: bytes.length,
-            page_count: result.pageCount,
-            check_status: result.status,
-            check_detail: result.detail,
-            checked_at: new Date().toISOString(),
-          })
-          .eq("id", doc.id);
-      }
-    }
-    if (status !== "ok") {
-      problems.push({ documentId: doc.id, fileName: doc.file_name, detail: detail ?? "This file could not be read." });
+    if (doc.kind === "archive") continue;
+    if (doc.check_status === "pending" || !doc.sha256) {
+      const { status } = await checkDocument(doc);
+      doc.check_status = status;
     }
   }
-  return { checked: docs.length, problems };
+  docs = await loadDocs(orderId);
+
+  // Two copies checked at the same moment can both pass as "ok": keep the first.
+  const first = new Map<string, string>();
+  for (const doc of docs) {
+    if (doc.check_status !== "ok" || !doc.sha256) continue;
+    const original = first.get(doc.sha256);
+    if (!original) {
+      first.set(doc.sha256, doc.id);
+      continue;
+    }
+    const detail = `Same as ${docs.find((d) => d.id === original)?.file_name ?? "another file"}; it will be reviewed once.`;
+    await db.from("order_documents").update({ check_status: "duplicate", duplicate_of: original, check_detail: detail }).eq("id", doc.id);
+    doc.check_status = "duplicate";
+  }
+
+  const problems: DocumentProblem[] = docs
+    .filter((d) => !SETTLED.has(d.check_status))
+    .map((d) => ({ documentId: d.id, fileName: d.file_name, detail: d.check_detail ?? "This file could not be read." }));
+  const reviewed = docs.filter((d) => d.kind !== "archive" && d.check_status === "ok").length;
+  return { checked: reviewed, problems };
 }
 
 type OrderForEmail = { id: string; upload_token: string; buyer_name: string; buyer_email: string; property_address: string };
@@ -197,5 +185,42 @@ export async function runDocumentChecks(orderId: string, submission: number, run
     .eq("id", orderId)
     .eq("processing_run_id", runId);
   await logEvent(orderId, "system", "documents_checked", { documents: checked });
+  await confirmDocumentsReceived(orderId, submission);
   return { status: "ready_for_analysis" as const, documents: checked };
+}
+
+/**
+ * Tells the buyer every file was received and checked, and the review is under way. Never
+ * throws: the review carries on even if this email fails.
+ */
+async function confirmDocumentsReceived(orderId: string, submission: number) {
+  try {
+    const { data } = await supabaseAdmin()
+      .from("order_documents")
+      .select("check_status, page_count, kind")
+      .eq("order_id", orderId);
+    const docs = (data ?? []).filter((d) => d.kind !== "archive");
+    const ok = docs.filter((d) => d.check_status === "ok");
+    const pages = ok.reduce((n, d) => n + ((d.page_count as number | null) ?? 0), 0);
+    const dupes = docs.filter((d) => d.check_status === "duplicate").length;
+    const order = await loadOrder(orderId);
+    const first = order.buyer_name.split(" ")[0];
+    const counts = `${ok.length} document${ok.length === 1 ? "" : "s"}${pages ? ` (${pages.toLocaleString()} pages)` : ""}`;
+    const dupeLine = dupes ? ` ${dupes} duplicate cop${dupes === 1 ? "y was" : "ies were"} set aside so nothing is reviewed twice.` : "";
+    await sendEmailOnce({
+      key: `documents-received:${orderId}:${submission}`,
+      orderId,
+      kind: "documents_received",
+      to: order.buyer_email,
+      subject: `Documents received: ${order.property_address}`,
+      html: emailHtml([
+        `Hi ${escapeHtml(first)},`,
+        `We've received and checked ${escapeHtml(counts)} for <strong>${escapeHtml(order.property_address)}</strong>.${escapeHtml(dupeLine)}`,
+        "Your review is under way. We'll email your report as soon as it's ready, or let you know if we need anything else.",
+      ]),
+      text: `Hi ${first},\n\nWe've received and checked ${counts} for ${order.property_address}.${dupeLine}\n\nYour review is under way. We'll email your report as soon as it's ready, or let you know if we need anything else.\n`,
+    });
+  } catch (err) {
+    console.error("documents-received email failed", orderId, err);
+  }
 }

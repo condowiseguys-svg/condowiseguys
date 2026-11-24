@@ -66,20 +66,18 @@ export async function draftReport(orderId: string, submission: number, runId: st
   // written report is per run, so "Re-run processing" gives Brian a freshly written draft.
   const runSlug = runId.replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 60);
 
-  // 1. Text of every page, scans read by Claude.
-  const perDoc: PageText[][] = [];
-  for (const [i, doc] of manifest.entries()) {
-    perDoc.push(
-      await cachedStep(path(`pages-${doc.sha256.slice(0, 16)}`), async () => {
-        const { data, error } = await db.storage.from(DOCUMENTS_BUCKET).download(doc.storage_path);
-        if (error || !data) throw error ?? new Error(`Could not download ${doc.file_name}`);
-        const bytes = new Uint8Array(await data.arrayBuffer());
-        return extractDocument({ orderId, submission, docIndex: i, doc, bytes });
-      }),
-    );
+  // 1. Text of every page, scans read by Claude. Two files at a time: a package unpacked from
+  // a ZIP can hold hundreds of files. Every page keeps its file and page number for citations.
+  const perDoc: PageText[][] = await mapLimit(manifest, 2, async (doc, i) => {
+    const read = await cachedStep(path(`pages-${doc.sha256.slice(0, 16)}`), async () => {
+      const { data, error } = await db.storage.from(DOCUMENTS_BUCKET).download(doc.storage_path);
+      if (error || !data) throw error ?? new Error(`Could not download ${doc.file_name}`);
+      const bytes = new Uint8Array(await data.arrayBuffer());
+      return extractDocument({ orderId, submission, docIndex: i, doc, bytes });
+    });
     // Position in the manifest can change between submissions; keep it current.
-    perDoc[i] = perDoc[i].map((p) => ({ ...p, doc: i }));
-  }
+    return read.map((p) => ({ ...p, doc: i }));
+  });
   const pages = numberPages(perDoc);
   const ocrPages = pages.filter((p) => p.source === "ocr").length;
   const cite = makeCiter(pages, manifest);

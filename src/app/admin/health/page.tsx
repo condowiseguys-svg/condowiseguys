@@ -78,6 +78,19 @@ async function runChecks(): Promise<Check[]> {
     const { error } = await db.storage.getBucket(b);
     checks.push({ name: `Storage ${b}`, ok: !error, detail: error ? error.message : "found" });
   }
+  // Large uploads (ZIPs up to 1 GB): Step 8 widens the bucket and adds document columns.
+  const { data: bucket } = await db.storage.getBucket(DOCUMENTS_BUCKET);
+  const { error: s8Err } = await db.from("order_documents").select("kind, parent_id, category, duplicate_of, unpack_detail").limit(1);
+  const takesZips = (bucket?.allowed_mime_types ?? []).includes("application/zip");
+  const limitMb = bucket?.file_size_limit ? Math.round(Number(bucket.file_size_limit) / 1024 / 1024) : null;
+  checks.push({
+    name: "Large uploads",
+    ok: !s8Err && takesZips && (limitMb === null || limitMb >= 1024),
+    detail:
+      s8Err || !takesZips
+        ? "Not set up: run database-setup/Step 8 - large uploads.sql in Supabase"
+        : `ready: ZIPs accepted, bucket limit ${limitMb ? `${limitMb} MB` : "none"}. Files over 50 MB also need the Supabase Pro plan and its upload limit raised (Storage > Settings).`,
+  });
   const { data: due, error: retErr } = await db.rpc("orders_due_for_retention", { p_limit: 50 });
   checks.push({
     name: "Retention setup",
