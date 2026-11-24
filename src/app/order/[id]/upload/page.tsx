@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ensurePaid, getOrderWithToken } from "@/lib/orders";
 import { site, tiers } from "@/lib/site";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { loadUploadListing } from "@/lib/uploads/listing";
 import { Uploader } from "./Uploader";
 
 // Document checks can run here after the response when Trigger.dev is not set up.
@@ -29,11 +30,6 @@ export default async function UploadPage({
   }
 
   const tier = tiers.find((t) => t.id === order.tier);
-  const { data: docs } = await supabaseAdmin()
-    .from("order_documents")
-    .select("storage_path, file_name, size_bytes, check_status, check_detail")
-    .eq("order_id", order.id)
-    .order("created_at");
   const { data: issues } =
     order.status === "awaiting_documents"
       ? await supabaseAdmin()
@@ -45,11 +41,12 @@ export default async function UploadPage({
           .order("created_at")
       : { data: [] };
   const canUpload = order.status === "paid" || order.status === "awaiting_documents";
+  const listing = canUpload ? await loadUploadListing(order as typeof order & { submitted_at?: string | null }) : null;
 
   return (
     <div className="bg-slate-50">
       <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 md:py-16">
-        {canUpload ? (
+        {canUpload && listing ? (
           <>
             {order.status === "awaiting_documents" ? (
               <div className="rounded-xl bg-amber-50 p-5 ring-1 ring-amber-200">
@@ -70,21 +67,13 @@ export default async function UploadPage({
             <p className="mt-3 leading-7 text-slate-600">
               {tier?.name} for <strong>{order.property_address}</strong>. Add everything from your
               disclosure package: Form B, depreciation report, minutes, bylaws and rules, financial
-              statements, budget, insurance and any engineering reports. You can come back to this
-              page from the link in your confirmation email.
+              statements, budget, insurance and any engineering reports. Upload the package exactly
+              as you received it: ZIP files are unpacked for you, duplicates are set aside and each
+              document is sorted automatically. You can come back to this page from the link in your
+              confirmation email, and an upload that was interrupted continues where it stopped.
             </p>
             <div className="mt-8">
-              <Uploader
-                orderId={order.id}
-                token={token}
-                existing={(docs ?? []).map((d) => ({
-                  path: d.storage_path as string,
-                  name: d.file_name as string,
-                  size: Number(d.size_bytes ?? 0),
-                  locked: d.check_status === "ok",
-                  problem: d.check_status === "unreadable" || d.check_status === "empty" ? (d.check_detail as string) : undefined,
-                }))}
-              />
+              <Uploader orderId={order.id} token={token} initial={listing} />
             </div>
             <p className="mt-8 text-sm text-slate-500">
               Files are stored privately in Canada and used only for your report. We keep a sealed copy

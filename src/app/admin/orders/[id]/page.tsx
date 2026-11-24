@@ -61,9 +61,12 @@ export default async function AdminOrderPage({
   ]);
 
   const docLinks = new Map<string, string>();
-  for (const d of docs.data ?? []) {
-    const { data } = await db.storage.from(DOCUMENTS_BUCKET).createSignedUrl(d.storage_path, 600);
-    if (data) docLinks.set(d.id, data.signedUrl);
+  // One request for all links: a package unpacked from a ZIP can hold hundreds of files.
+  const docRows = docs.data ?? [];
+  for (let i = 0; i < docRows.length; i += 500) {
+    const batch = docRows.slice(i, i + 500);
+    const { data } = await db.storage.from(DOCUMENTS_BUCKET).createSignedUrls(batch.map((d) => d.storage_path), 600);
+    (data ?? []).forEach((link, k) => link.signedUrl && docLinks.set(batch[k].id, link.signedUrl));
   }
   const reportLinks = new Map<string, string>();
   for (const v of versions.data ?? []) {
@@ -164,8 +167,8 @@ export default async function AdminOrderPage({
                 </p>
               </div>
               <div className="shrink-0 text-right text-xs">
-                <span className={d.check_status === "ok" ? "text-risk-green" : d.check_status === "pending" ? "text-slate-500" : "text-risk-red"}>
-                  {d.check_status}
+                <span className={d.check_status === "ok" ? "text-risk-green" : ["pending", "archive", "duplicate"].includes(d.check_status) ? "text-slate-500" : "text-risk-red"}>
+                  {d.check_status === "archive" ? "ZIP (unpacked below)" : d.check_status}
                 </span>
                 {d.sha256 && <p className="font-mono text-slate-400" title={d.sha256}>{d.sha256.slice(0, 12)}</p>}
               </div>

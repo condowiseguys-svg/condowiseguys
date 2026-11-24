@@ -63,6 +63,45 @@ Decided 2026-11-19. Set up by `database-setup/Step 5 - retention.sql`; runs dail
   crash right after sending still can't produce a second email. The order only moves to
   delivered from approved.
 
+## Large packages: how uploads work
+
+Buyers can upload the package exactly as they got it: ZIP files up to 1 GB each, loose PDFs,
+JPG/PNG photos, or whole folders, by drag-and-drop or the file and folder buttons.
+
+1. **Straight to storage, in pieces.** The browser asks our server for a one-time permission to
+   write one new file in the order's folder (`getUploadTicket`), then sends the file directly to
+   Supabase Storage (Canada) in 6 MB pieces using TUS resumable uploads. Our web server never
+   handles the file, so Vercel's 4.5 MB request limit doesn't apply. Three files upload at a time,
+   each with its own progress bar, Pause, Resume and Cancel.
+2. **Retry and resume.** Dropped pieces are retried automatically (up to about two minutes of
+   back-off). If the connection goes, the upload pauses and carries on when the buyer is back
+   online. If the page is closed, adding the same file again on the same computer continues from
+   the last piece. Permissions are re-signed before Supabase's two-hour limit runs out.
+3. **Checked as soon as it lands** (`prepare-upload` job in Trigger.dev, or on the web server when
+   Trigger.dev isn't set up). A PDF or photo gets its fingerprint (SHA-256), page count and a first
+   guess at its type from its name and first pages. A ZIP is unpacked into separate documents.
+   The upload page updates itself every few seconds and shows what was found.
+4. **Safe unpacking.** ZIPs are opened on the job's temporary disk, never in memory or the
+   browser. We refuse archives with unsafe paths ("../"), more than 10,000 files, more than
+   4 GB unpacked, or suspicious compression (ZIP bombs), and we skip links, password-protected
+   entries, files over 500 MB and anything that isn't really a PDF, JPG or PNG (checked by its
+   first bytes, not its name). ZIPs inside ZIPs are opened two levels deep. Skipped files are
+   listed for the buyer. PDFs with scripts or attachments are noted; we never run or open those.
+5. **Duplicates.** A document already in the order (same fingerprint) is marked "duplicate" and
+   reviewed once. The copy is kept, so removing the other copy later doesn't lose it.
+6. **Emails.** When the last ZIP finishes unpacking, the buyer gets "Your documents are
+   unpacked" with a Submit button (they may have left the page). After Submit and the checks,
+   they get "Documents received" with the document and page count. If an upload fails for
+   good, Brian gets an email.
+7. **The report.** Unpacked documents are stored in a sensible reading order (Form B, bylaws,
+   depreciation report, financials ... minutes by date). The report writer reads two files at a
+   time and keeps every page's file and page number, so findings cite e.g.
+   "Minutes/2024-03 Council.pdf p. 3".
+
+Limits: 1 GB per ZIP, 500 MB per PDF, 5 GB and 1,000 files per order (`src/lib/uploads/limits.ts`).
+Supabase also has its own limit for the whole project: 50 MB per file on the Free plan; on Pro
+it can be raised (Storage > Settings > Upload file size limit). Database: Step 8.
+
 ## Exceptions
 
 ### Failed payment
