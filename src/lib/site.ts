@@ -3,7 +3,7 @@
 export const site = {
   name: "Condo Wise Guys",
   domain: "condowiseguys.com",
-  email: "info@condowiseguys.com",
+  email: "report@condowiseguys.com",
   tagline: "BC strata document reviews, in plain English",
   /**
    * Postal mailing address only: there is no walk-in office. It has been the business address

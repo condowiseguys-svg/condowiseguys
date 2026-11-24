@@ -9,6 +9,7 @@ const links = [
   { href: "/buyers-guide", label: "Free guide" },
   { href: "/for-realtors", label: "For realtors" },
   { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
 ];
 
 export function SiteHeader() {
@@ -24,11 +25,11 @@ export function SiteHeader() {
             className="h-11 w-11 shrink-0 rounded-md sm:h-12 sm:w-12"
             priority
           />
-          <span className="truncate text-lg font-semibold tracking-tight text-white">
+          <span className="truncate text-lg font-semibold tracking-tight text-white lg:hidden xl:inline">
             Condo Wise Guys
           </span>
         </Link>
-        <nav className="hidden items-center gap-6 whitespace-nowrap text-sm text-silver-200 lg:flex">
+        <nav className="hidden items-center gap-5 whitespace-nowrap text-sm text-silver-200 lg:flex">
           {links.map((l) => (
             <Link key={l.href} href={l.href} className="hover:text-white">
               {l.label}
