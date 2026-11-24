@@ -15,6 +15,25 @@ export const site = {
 };
 
 /**
+ * What a review covers. Brian's E&O insurance excludes mould claims, so every report and the
+ * order page say plainly that the review is of the documents only: no site visit, and no physical,
+ * mould or environmental inspection. Change the wording here and it updates everywhere.
+ */
+export const reviewScope = {
+  /** One line, for footers, emails and page footers in the PDF. */
+  line: "Document review only: not a physical, structural, mould or environmental inspection, legal advice or an appraisal.",
+  /** Short version for the site. */
+  short:
+    "Our reviews cover the strata documents you provide, and nothing else. We do not visit or inspect the property. A review is not a physical, home or structural inspection, not a mould or environmental inspection, and not legal advice or an appraisal.",
+  /** Full version for the report and the order page. */
+  full: [
+    "This review covers only the strata documents provided to Condo Wise Guys. We did not visit, view or inspect the property, the building or the unit.",
+    "It is not a physical, home or building inspection, a structural or engineering assessment, or a mould, air quality or environmental inspection. It does not assess the condition of the structure, building envelope, roof, plumbing, mechanical, electrical or fire safety systems, or compliance with building codes. It cannot confirm whether mould, moisture damage, asbestos or other hazardous materials are present or absent. Where the documents mention any of these, we report what the documents say.",
+    "It is not legal advice, an appraisal or financial advice. It relies on the documents being accurate and complete: anything not in the package, or changed since, is not covered.",
+  ],
+};
+
+/**
  * The free Condo Buyers Guide. The PDF lives in public/guides; replace that file to publish a new
  * edition (source: project files, condo-buyers-guide/). It is a free download on /buyers-guide and
  * goes with every delivered report.

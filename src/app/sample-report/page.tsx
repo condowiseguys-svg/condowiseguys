@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { RiskBadge, type Risk } from "@/components/RiskBadge";
+import { reviewScope } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Sample report",
@@ -56,7 +57,7 @@ const levies = [
 ];
 
 const sections = [
-  "Cover and scope, including documents missing from the package",
+  "Cover and scope notice (documents only), including documents missing from the package",
   "Executive summary with the overall red, amber or green rating and top findings",
   "Form B, line by line",
   "Red flag check: each of the Top 20 Red Flags from our Condo Buyers Guide",
@@ -148,6 +149,13 @@ export default function SampleReport() {
             </p>
           </div>
         </article>
+
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm leading-6 text-slate-600">
+          <p className="font-semibold text-navy-900">Scope: a review of the documents only</p>
+          {reviewScope.full.map((p) => (
+            <p key={p} className="mt-2">{p}</p>
+          ))}
+        </div>
 
         <div className="mt-10 rounded-2xl bg-white p-6 ring-1 ring-slate-200 sm:p-8">
           <h2 className="text-xl font-semibold text-navy-900">The full report also covers</h2>
