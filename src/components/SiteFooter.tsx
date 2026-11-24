@@ -20,6 +20,7 @@ export function SiteFooter() {
           <Link href="/#how-it-works" className="block hover:text-white">How it works</Link>
           <Link href="/sample-report" className="block hover:text-white">Sample report</Link>
           <Link href="/#pricing" className="block hover:text-white">Pricing</Link>
+          <Link href="/buyers-guide" className="block hover:text-white">Free Condo Buyers Guide</Link>
           <Link href="/#faq" className="block hover:text-white">Questions</Link>
           <Link href="/for-realtors" className="block hover:text-white">For realtors</Link>
           <Link href="/about" className="block hover:text-white">About Brian</Link>

@@ -1,9 +1,10 @@
 import { hasMarketingConsent } from "@/lib/marketing";
-import { site, sisterCompany, sisterLink } from "@/lib/site";
+import { buyersGuide, site, sisterCompany, sisterLink } from "@/lib/site";
 import { DOCUMENTS_BUCKET, RECORDS_BUCKET, supabaseAdmin } from "@/lib/supabase/admin";
 import { emailHtml, escapeHtml, sendEmailOnce } from "./email";
 import { logEvent, raiseIssue } from "./events";
 import { canonicalJson, sha256 } from "./hash";
+import { siteUrl } from "./urls";
 
 export type ManifestEntry = {
   document_id: string;
@@ -217,6 +218,20 @@ export async function approveReportVersion(versionId: string, approvedBy: string
   return again as ReportVersion;
 }
 
+/**
+ * The free Condo Buyers Guide, fetched from the live site so the Trigger.dev worker doesn't need
+ * its own copy. Returns null if the site can't be reached, and the email then links to it instead.
+ */
+async function fetchBuyersGuide(): Promise<Buffer | null> {
+  try {
+    const res = await fetch(`${siteUrl()}${buyersGuide.pdfPath}`, { signal: AbortSignal.timeout(20000) });
+    if (!res.ok || !(res.headers.get("content-type") ?? "").includes("pdf")) return null;
+    return Buffer.from(await res.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
 /** Emails the approved report once, then marks the order delivered. Safe to retry. */
 export async function deliverReport(orderId: string) {
   const db = supabaseAdmin();
@@ -238,6 +253,16 @@ export async function deliverReport(orderId: string) {
   if (sha256(bytes) !== version.sha256) throw new Error("Archived report does not match its fingerprint");
 
   const first = order.buyer_name.split(" ")[0];
+  // Every report goes out with the free Condo Buyers Guide: attached when the site is reachable,
+  // otherwise as a link. The link is in the email either way.
+  const guide = await fetchBuyersGuide();
+  const guideUrl = `${siteUrl()}${buyersGuide.pagePath}`;
+  const guideHtml = guide
+    ? `We've also attached a free copy of our <strong>${buyersGuide.title}</strong>. It explains what each strata document means and the red flags to watch for. You can also download it any time at <a href="${guideUrl}">${escapeHtml(guideUrl)}</a>.`
+    : `Your free copy of our <strong>${buyersGuide.title}</strong>, which explains what each strata document means and the red flags to watch for, is here: <a href="${guideUrl}">${escapeHtml(guideUrl)}</a>.`;
+  const guideText = guide
+    ? `We've also attached a free copy of our ${buyersGuide.title}. It explains what each strata document means and the red flags to watch for. You can also download it any time at ${guideUrl}`
+    : `Your free copy of our ${buyersGuide.title}, which explains what each strata document means and the red flags to watch for, is here: ${guideUrl}`;
   // One line about DreamHomeGroup.ca, only for buyers who opted in, and only once a mailing
   // address is set (CASL requires it in any email that promotes a service).
   const promo = site.mailingAddress && (await hasMarketingConsent(orderId));
@@ -257,14 +282,18 @@ export async function deliverReport(orderId: string) {
     to: order.buyer_email,
     subject: `Your strata document review: ${order.property_address}`,
     reportVersionId: version.id,
-    attachments: [{ filename: `Condo-Wise-Guys-Review-${order.id.slice(0, 8)}.pdf`, content: bytes }],
+    attachments: [
+      { filename: `Condo-Wise-Guys-Review-${order.id.slice(0, 8)}.pdf`, content: bytes },
+      ...(guide ? [{ filename: buyersGuide.fileName, content: guide }] : []),
+    ],
     html: emailHtml([
       `Hi ${escapeHtml(first)},`,
       `Your review of <strong>${escapeHtml(order.property_address)}</strong> is attached.`,
+      guideHtml,
       "Reply to this email if you have any questions about what we found.",
       ...promoHtml,
     ]),
-    text: `Hi ${first},\n\nYour review of ${order.property_address} is attached.\n\nReply to this email if you have any questions.\n${promoText}`,
+    text: `Hi ${first},\n\nYour review of ${order.property_address} is attached.\n\n${guideText}\n\nReply to this email if you have any questions.\n${promoText}`,
   });
 
   if (result === "not_configured") {

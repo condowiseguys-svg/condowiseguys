@@ -6,6 +6,7 @@ const links = [
   { href: "/#what-we-review", label: "What we review" },
   { href: "/sample-report", label: "Sample report" },
   { href: "/#pricing", label: "Pricing" },
+  { href: "/buyers-guide", label: "Free guide" },
   { href: "/for-realtors", label: "For realtors" },
   { href: "/about", label: "About" },
 ];

@@ -15,6 +15,21 @@ export const site = {
 };
 
 /**
+ * The free Condo Buyers Guide. The PDF lives in public/guides; replace that file to publish a new
+ * edition (source: project files, condo-buyers-guide/). It is a free download on /buyers-guide and
+ * goes with every delivered report.
+ */
+export const buyersGuide = {
+  title: "Condo Buyers Guide",
+  subtitle: "Reading the Strata Documents Before You Buy",
+  pdfPath: "/guides/condo-buyers-guide.pdf",
+  coverPath: "/guides/condo-buyers-guide-cover.png",
+  pagePath: "/buyers-guide",
+  fileName: "Condo-Buyers-Guide.pdf",
+  pages: 51,
+};
+
+/**
  * Brian's appraisal and depreciation report company. Condo Wise Guys and DreamHomeGroup.ca have
  * the same owner, so every mention says so.
  */
@@ -112,6 +127,7 @@ export const tiers: Tier[] = [
       "Red, amber and green risk ratings with page references",
       "Estimated special levy exposure for your unit",
       "Questions to ask before removing subjects",
+      "Free Condo Buyers Guide (51-page PDF) with your report",
     ],
   },
   {
