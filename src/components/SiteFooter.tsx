@@ -27,9 +27,7 @@ export function SiteFooter() {
         </div>
         <div className="text-sm leading-7">
           <p className="font-semibold text-white">Contact</p>
-          <a href={`mailto:${site.email}`} className="block hover:text-white">
-            {site.email}
-          </a>
+          <Link href="/contact" className="block hover:text-white">Contact us</Link>
           <p>Kelowna, British Columbia</p>
           <p className="mt-4 font-semibold text-white">Sister company</p>
           <a href={sisterLink("footer")} className="block hover:text-white">

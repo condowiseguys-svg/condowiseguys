@@ -8,6 +8,7 @@ const links = [
   { href: "/#pricing", label: "Pricing" },
   { href: "/for-realtors", label: "For realtors" },
   { href: "/about", label: "About" },
+  { href: "/contact", label: "Contact" },
 ];
 
 export function SiteHeader() {
