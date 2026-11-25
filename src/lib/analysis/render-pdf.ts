@@ -244,13 +244,19 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
   doc.setModificationDate(meta.preparedOn);
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const logo = await doc.embedJpg(Buffer.from(LOGO_JPEG_BASE64, "base64"));
+  // A fresh Uint8Array: pdf-lib reads the whole underlying memory and ignores a Buffer's
+  // offset, so a pooled Buffer made it fail with "SOI not found in JPEG" on some runs.
+  // A missing logo must never stop a report.
+  const logo = await doc.embedJpg(new Uint8Array(Buffer.from(LOGO_JPEG_BASE64, "base64"))).catch((err) => {
+    console.error("report logo could not be embedded", err);
+    return null;
+  });
   const L = new Layout(doc, font, bold);
 
   // ---- Cover band
   L.newPage();
   L.page.drawRectangle({ x: 0, y: H - 130, width: W, height: 130, color: NAVY });
-  L.page.drawImage(logo, { x: M, y: H - 112, width: 84, height: 84 });
+  if (logo) L.page.drawImage(logo, { x: M, y: H - 112, width: 84, height: 84 });
   L.page.drawText("STRATA DOCUMENT REVIEW", { x: M + 102, y: H - 52, size: 10, font: bold, color: rgb(0.58, 0.77, 0.99) });
   const titleLines = L.wrap(meta.propertyAddress, bold, 18, CONTENT_W - 102).slice(0, 2);
   titleLines.forEach((t, i) => L.page.drawText(t, { x: M + 102, y: H - 76 - i * 22, size: 18, font: bold, color: rgb(1, 1, 1) }));
