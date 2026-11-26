@@ -4,6 +4,7 @@ import { PDFDocument } from "@cantoo/pdf-lib";
 import { extractText, getDocumentProxy } from "unpdf";
 import { z } from "zod/v4";
 import type { ManifestEntry } from "@/lib/ops/records";
+import Anthropic from "@anthropic-ai/sdk";
 import { askForJson, ocrModel } from "./claude";
 import { mapLimit } from "./pool";
 
@@ -98,7 +99,7 @@ export async function ocrPdfPages(opts: {
       for (const p of batch) result.set(p, `[page could not be extracted for reading: ${String(err).slice(0, 80)}]`);
       return;
     }
-    const answer = await askForJson({
+    const answer = await askOrSkip({
       orderId: opts.orderId,
       step: "Read scanned pages",
       costKey: `claude:ocr:${opts.orderId}:s${opts.submission}:d${opts.docIndex}:p${batch[0]}-${batch[batch.length - 1]}`,
@@ -111,7 +112,8 @@ export async function ocrPdfPages(opts: {
         { type: "text", text: `Transcribe all ${batch.length} pages of the attached PDF. Return one entry per page, index 1 to ${batch.length}.` },
       ],
     });
-    for (const p of answer.pages) {
+    // Pages Claude couldn't take (e.g. too large) stay unread and are listed in the report.
+    for (const p of answer?.pages ?? []) {
       const real = batch[p.index - 1];
       if (real !== undefined) result.set(real, p.text.trim());
     }
@@ -119,15 +121,61 @@ export async function ocrPdfPages(opts: {
   return result;
 }
 
-/** Reads an uploaded photo of a page (JPEG or PNG). */
+/**
+ * Claude refuses a request it considers invalid (HTTP 400), for example an image over its
+ * size limit. Retrying can't help, so the pages are left unread (the report lists them for a
+ * check by hand) instead of failing the whole order.
+ */
+async function askOrSkip(opts: Parameters<typeof askForJson<typeof OcrSchema>>[0]) {
+  try {
+    return await askForJson(opts);
+  } catch (err) {
+    if (err instanceof Anthropic.BadRequestError) {
+      console.error(`Claude could not read ${opts.costKey}: ${err.message}`);
+      return null;
+    }
+    throw err;
+  }
+}
+
+/** Photos above this go to Claude inside a one-page PDF, which has no 10 MB or pixel-size cap. */
+const MAX_DIRECT_IMAGE_BYTES = 3.5 * 1024 * 1024;
+
+/** Puts a photo on a single PDF page sized to it. */
+async function imageToPdf(bytes: Uint8Array, mediaType: "image/jpeg" | "image/png") {
+  const doc = await PDFDocument.create();
+  // A fresh copy: pdf-lib reads the whole underlying buffer and ignores a Buffer's offset.
+  const copy = new Uint8Array(bytes);
+  const image = mediaType === "image/png" ? await doc.embedPng(copy) : await doc.embedJpg(copy);
+  // Cap the page at 14 x 14 inches; the photo keeps its full resolution inside it.
+  const scale = Math.min(1, 1008 / Math.max(image.width, image.height));
+  const page = doc.addPage([image.width * scale, image.height * scale]);
+  page.drawImage(image, { x: 0, y: 0, width: image.width * scale, height: image.height * scale });
+  return doc.save();
+}
+
+/** Reads an uploaded photo of a page (JPEG or PNG). Returns null if it couldn't be read. */
 export async function ocrImage(opts: {
   orderId: string;
   submission: number;
   docIndex: number;
   bytes: Uint8Array;
   mediaType: "image/jpeg" | "image/png";
-}) {
-  const answer = await askForJson({
+}): Promise<string | null> {
+  let source: Anthropic.ContentBlockParam;
+  if (opts.bytes.length > MAX_DIRECT_IMAGE_BYTES) {
+    let pdf: Uint8Array;
+    try {
+      pdf = await imageToPdf(opts.bytes, opts.mediaType);
+    } catch (err) {
+      console.error("could not wrap photo in a PDF", err);
+      return null;
+    }
+    source = { type: "document", source: { type: "base64", media_type: "application/pdf", data: Buffer.from(pdf).toString("base64") } };
+  } else {
+    source = { type: "image", source: { type: "base64", media_type: opts.mediaType, data: Buffer.from(opts.bytes).toString("base64") } };
+  }
+  const answer = await askOrSkip({
     orderId: opts.orderId,
     step: "Read scanned pages",
     costKey: `claude:ocr:${opts.orderId}:s${opts.submission}:d${opts.docIndex}:img`,
@@ -135,12 +183,9 @@ export async function ocrImage(opts: {
     system: OCR_SYSTEM,
     model: ocrModel(),
     effort: "low",
-    content: [
-      { type: "image", source: { type: "base64", media_type: opts.mediaType, data: Buffer.from(opts.bytes).toString("base64") } },
-      { type: "text", text: "Transcribe this page. Return one entry with index 1." },
-    ],
+    content: [source, { type: "text", text: "Transcribe this page. Return one entry with index 1." }],
   });
-  return answer.pages.map((p) => p.text).join("\n\n");
+  return answer ? answer.pages.map((p) => p.text).join("\n\n") : null;
 }
 
 /** Every page of one file, with scans read by Claude. */
@@ -155,7 +200,9 @@ export async function extractDocument(opts: {
   if (isImageFile(doc.file_name)) {
     const mediaType = /\.png$/i.test(doc.file_name) ? "image/png" : "image/jpeg";
     const text = await ocrImage({ ...opts, mediaType });
-    return [{ doc: docIndex, page: 1, text, source: "ocr" }];
+    return text
+      ? [{ doc: docIndex, page: 1, text, source: "ocr" }]
+      : [{ doc: docIndex, page: 1, text: "[scanned page that could not be read]", source: "unreadable" }];
   }
 
   let texts: string[];
