@@ -62,6 +62,8 @@ Rules:
 - A page reading "[scanned page that could not be read]" is not blank: say it could not be read. Read transcribed scanned pages as carefully as the rest.
 - Separate projections (e.g. a depreciation report's funding model) from decisions owners actually made.
 - When comparing results to a budget, say whether the budget figure is year-to-date or full-year.
+- Do not give an opinion of the unit's value or price. Note legal, building-condition and insurance questions as matters to confirm with the right professional rather than concluding them.
+- Never note the race, colour, religion, national or ethnic origin, sex, sexual orientation, gender identity, age, family status, disability or source of income of owners, residents or neighbours. Refer to owners by unit number, and leave out names of private individuals.
 
 ${RISK_METHOD}`;
 

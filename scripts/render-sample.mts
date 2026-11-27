@@ -70,6 +70,7 @@ const pdf = await renderReportPdf(report, segments, {
   fileCount: 1,
   ocrPages: 166,
   contactEmail: "report@condowiseguys.com",
+  professionallyReviewed: process.env.SAMPLE_UNREVIEWED !== "1",
 }, makeCiter(pages, manifest));
 writeFileSync(output, pdf);
 console.log("wrote", output, pdf.length, "bytes");

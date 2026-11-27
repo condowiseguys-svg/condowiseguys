@@ -147,6 +147,8 @@ export async function draftReport(orderId: string, submission: number, runId: st
       fileCount: manifest.length,
       ocrPages,
       contactEmail: contactEmail(),
+      // Brian checks and approves every report except Standard ones sent automatically.
+      professionallyReviewed: order.tier === "expert" || !autoSendStandard(),
     },
     cite,
   );
