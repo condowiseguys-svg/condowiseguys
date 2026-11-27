@@ -41,8 +41,17 @@ export async function uploadReport(orderId: string, form: FormData) {
   done(orderId, `Saved as version ${v.version}. Review it, then approve and send.`);
 }
 
-export async function approveAndSend(orderId: string, versionId: string) {
+/**
+ * The report carries Brian's signed certification, so approving it is signing it. He must
+ * confirm that he reviewed it and that he (and DreamHomeGroup.ca) performed no services for
+ * this strata lot or strata corporation in the last three years, or that this version discloses
+ * that work (he uploads a corrected PDF and approves that one).
+ */
+export async function approveAndSend(orderId: string, versionId: string, form: FormData) {
   const result = await guard(orderId, async () => {
+    if (form.get("reviewed") !== "on" || form.get("no_prior_services") !== "on")
+      throw new Error("Tick both boxes to confirm your review and the prior-services check before approving.");
+    await logEvent(orderId, "admin", "certification_confirmed", { versionId, reviewed: true, noPriorServices: true });
     const v = await approveReportVersion(versionId, "brian");
     return startDelivery(orderId, v.id);
   });

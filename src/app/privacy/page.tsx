@@ -85,9 +85,10 @@ export default function PrivacyPage() {
         <ul className="list-disc space-y-1 pl-6">
           <li>Uploaded documents are deleted automatically 90 days after your report is delivered.</li>
           <li>
-            Your report and order record are deleted 2 years after delivery. At that point we also
-            erase your name and contact details from the order, keeping only the amount and dates
-            as a business record.
+            Your report and order record are kept for 5 years after delivery, the period professional
+            appraisal standards and our professional liability insurance expect us to keep our work,
+            and then deleted. At that point we also erase your name and contact details from the
+            order, keeping only the amount and dates as a business record.
           </li>
           <li>Orders that are cancelled or never paid follow the same schedule from the order date.</li>
           <li>

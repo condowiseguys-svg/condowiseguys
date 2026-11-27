@@ -223,10 +223,20 @@ export default async function AdminOrderPage({
                 </p>
               )}
               {v.status === "draft" && (
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex flex-wrap items-end gap-2">
                   {canApprove && (
-                    <form action={approveAndSend.bind(null, id, v.id)}>
-                      <button className={primary}>Approve and send</button>
+                    <form action={approveAndSend.bind(null, id, v.id)} className="flex flex-col gap-2">
+                      <label className="flex items-start gap-2 text-sm text-slate-700">
+                        <input type="checkbox" name="reviewed" required className="mt-1" />
+                        I have reviewed this report and stand behind its findings (it carries my signed certification).
+                      </label>
+                      <label className="flex items-start gap-2 text-sm text-slate-700">
+                        <input type="checkbox" name="no_prior_services" required className="mt-1" />
+                        Neither I nor DreamHomeGroup.ca has done work for this strata lot or strata corporation in the
+                        last 3 years, or this version discloses that work. (If not, upload a corrected PDF and approve
+                        that one.)
+                      </label>
+                      <button className={`${primary} self-start`}>Approve and send</button>
                     </form>
                   )}
                   <form action={discardDraft.bind(null, id, v.id)}>

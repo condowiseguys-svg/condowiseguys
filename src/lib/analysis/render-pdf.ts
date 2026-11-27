@@ -17,6 +17,12 @@ export type ReportMeta = {
   fileCount: number;
   ocrPages: number;
   contactEmail: string;
+  /**
+   * True when Brian reviews and approves this report before it is sent (Expert orders, and
+   * Standard orders while AUTO_SEND_STANDARD is off). Only then does the report carry his
+   * signed certification; a report sent without his review must not claim one.
+   */
+  professionallyReviewed: boolean;
 };
 
 type Risk = "red" | "amber" | "green";
@@ -230,6 +236,69 @@ export function relatedServiceNotes(signals: Report["service_signals"] | undefin
   return notes;
 }
 
+/**
+ * The report's scope of work, assumptions and limiting conditions, and (only when Brian
+ * reviews the report before it is sent) his certification. Written to meet the parts of
+ * USPAP that apply to a valuation service that is not an appraisal or appraisal review:
+ * the Ethics Rule (honest, impartial, not misleading, conflicts disclosed) and the
+ * Competency Rule (scope stated; legal, building and insurance questions referred out).
+ * No opinion of value is given, so Standards 1 and 2 (real property appraisal) do not apply.
+ */
+export function scopeOfWork(meta: Pick<ReportMeta, "buyerName" | "propertyAddress" | "unitNumber" | "strataPlan" | "ocrPages" | "professionallyReviewed">) {
+  const lot = [meta.unitNumber ? `unit ${meta.unitNumber}` : null, meta.propertyAddress, meta.strataPlan ? `strata plan ${meta.strataPlan}` : null]
+    .filter(Boolean)
+    .join(", ");
+  const reviewed = meta.professionallyReviewed;
+  const terms: [string, string][] = [
+    ["Client and intended user", `${meta.buyerName}, who ordered this report. The client may share it with their lawyer, notary, realtor or lender, but no one other than the client should rely on it.`],
+    [
+      "Intended use",
+      `To help the client understand the strata documents for ${lot} and decide what to confirm before removing subjects on a purchase. It is not intended for any other use, such as lending, valuation, insurance or litigation.`,
+    ],
+    [
+      "Type of service",
+      "A review of the strata documents provided. No opinion of the property's value was developed or is reported, so this is not an appraisal or an appraisal review. It is also not a building inspection, a depreciation report, a legal opinion, insurance advice or financial advice.",
+    ],
+    [
+      "Work performed",
+      `Every page of the package provided was read${meta.ocrPages ? `, including ${meta.ocrPages} scanned pages read by text recognition` : ""}. AI software was used to read the documents, extract figures and draft the findings, which were checked against our BC strata document checklist${
+        reviewed ? ` and then reviewed by ${founder.name}, who is responsible for this report` : ""
+      }. Findings cite the package pages they come from.`,
+    ],
+    [
+      "Work not performed",
+      "We did not inspect the building or the unit, contact the strata corporation, its manager, council or the seller, search title, or check the documents against any other source. Information is as of the dates of the documents reviewed, listed above.",
+    ],
+  ];
+  if (!reviewed)
+    terms.push([
+      "Review",
+      "This Standard report was produced by our review process and was not individually reviewed by an appraiser before it was sent.",
+    ]);
+  const conditions = [
+    "The documents provided are assumed to be authentic, complete for what they cover, and accurate. We did not audit them. If they are incomplete, out of date or wrong, the findings may change.",
+    "Estimated special levy shares for this unit are illustrations. They assume a cost is shared by unit entitlement across the whole strata (or the section named). The actual share depends on the levy resolution, and a change in that assumption would change the estimates.",
+    "Depreciation report forecasts and funding models are the report author's projections, not decisions by the owners. They are reported as given and were not re-estimated.",
+    "Text recognition and AI extraction can misread figures. Check any figure that matters to your decision against the source page cited.",
+    "Comments on bylaws, legal proceedings, building condition and insurance identify matters to confirm. They are not legal, engineering or insurance advice; confirm them with a lawyer or notary, a home inspector or engineer, and your insurance agent or broker.",
+    "Nothing after the date of this report, or outside the package provided, is covered.",
+  ];
+  const certification = reviewed
+    ? [
+        "The statements of fact in this report are true and correct, based on the documents provided.",
+        "The analyses and conclusions are limited only by the scope of work, assumptions and limiting conditions stated in this report, and are my personal, impartial and unbiased professional analyses and conclusions.",
+        "I have no present or prospective interest in the property that is the subject of this report, and no personal interest with respect to the parties involved.",
+        "I have no bias with respect to the property or to the parties involved in this assignment.",
+        "My engagement was not contingent on developing or reporting predetermined results, and my compensation is not contingent on the conclusions reached, on whether the purchase completes, or on any later event.",
+        `Within the three years before this report, I have performed no services regarding this strata lot or its strata corporation, as an appraiser or in any other capacity, including through ${sisterCompany.shortName}.`,
+        "I have not inspected the property.",
+        "AI software assisted in reading the documents and drafting this report under my direction. I have reviewed the report and take responsibility for it. No other person provided significant professional assistance.",
+        "This review was carried out in conformity with the requirements of the Uniform Standards of Professional Appraisal Practice (USPAP) that apply to a valuation service that is not an appraisal or appraisal review, namely the Ethics Rule and the Competency Rule.",
+      ]
+    : null;
+  return { terms, conditions, certification };
+}
+
 function fmtDate(d: Date) {
   return d.toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric", timeZone: "America/Vancouver" });
 }
@@ -293,6 +362,10 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
     `Ratings use the traffic light method from our Condo Buyers Guide. Red: ${RISK_ACTION.red.toLowerCase()}. Amber: ${RISK_ACTION.amber.toLowerCase()}. Green: ${RISK_ACTION.green.toLowerCase()}.`,
     { size: 8.5, color: MUTED, gap: 2 },
   );
+  L.text(
+    "This is a review of the strata documents provided. It is not an appraisal (no opinion of value is given), a building inspection or a legal opinion. Its scope, assumptions and limits are set out in \"Scope of work\" near the end.",
+    { size: 8.5, color: MUTED, gap: 2 },
+  );
   L.heading("Executive summary");
   L.text(report.summary, { size: 10.5, gap: 8 });
   if (report.priorities?.length) {
@@ -334,16 +407,28 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
 
   // ---- The guide's Top 20 Red Flags
   if (report.red_flags?.length) {
-    L.heading("Red flag check: the Condo Buyers Guide's Top 20");
-    L.text(
-      "We checked the package for each of the 20 red flags in our Condo Buyers Guide (Part 12.2). Red means the flag is present, amber means it is partly present or needs an answer, green means the documents we reviewed do not show it, and not checked means the documents needed were missing or unreadable.",
-      { size: 9.5, color: MUTED, gap: 6 },
-    );
-    TOP_RED_FLAGS.forEach((flag, i) => {
+    // Report only the flags the documents provided let us assess. A flag we couldn't assess is
+    // not evidence that anything is missing: the client's documents may simply be named or
+    // organized differently, so we say nothing about it beyond a count.
+    const assessed = TOP_RED_FLAGS.flatMap((flag, i) => {
       const row = report.red_flags.find((r) => r.n === i + 1);
-      const status = row?.status ?? "not_checked";
-      L.item(`${i + 1}. ${flag}. ${row?.note ?? "Not assessed."}`, status, row?.pages.length ? cite(row.pages) : "", 70);
+      return row && row.status !== "not_checked" ? [{ flag, n: i + 1, row, status: row.status }] : [];
     });
+    if (assessed.length) {
+      L.heading("Red flag check: the Condo Buyers Guide's Top 20");
+      L.text(
+        "We checked the documents provided against the 20 red flags in our Condo Buyers Guide (Part 12.2). Red means the flag is present, amber means it is partly present or needs an answer, and green means the documents we reviewed do not show it.",
+        { size: 9.5, color: MUTED, gap: 6 },
+      );
+      for (const { flag, n, row, status } of assessed) L.item(`${n}. ${flag}. ${row.note}`, status, row.pages.length ? cite(row.pages) : "", 70);
+      const rest = TOP_RED_FLAGS.length - assessed.length;
+      if (rest)
+        L.text(`The other ${rest} red flag${rest === 1 ? "" : "s"} could not be assessed from the documents provided.`, {
+          size: 9,
+          color: MUTED,
+          gap: 6,
+        });
+    }
   }
 
   // ---- Sections
@@ -351,7 +436,7 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
     const s = report.sections.find((x) => x.id === id);
     L.heading(SECTION_TITLES[id]);
     if (!s) {
-      L.text("Nothing in the package covered this area.", { color: MUTED, gap: 6 });
+      L.text("The documents provided did not cover this area.", { color: MUTED, gap: 6 });
       continue;
     }
     L.text(s.intro, { gap: 6 });
@@ -359,11 +444,15 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
   }
 
   // ---- Missing documents
-  L.heading("Documents missing or out of date");
+  L.heading("Documents to ask for");
   if (report.missing_documents.length) {
+    L.text(
+      "We did not find these in the documents provided, or the version provided is out of date. They may exist under another name; if you have them, check them before removing subjects.",
+      { size: 9.5, color: MUTED, gap: 6 },
+    );
     report.missing_documents.forEach((m) => L.item(`${m.document}. ${m.why_it_matters}`, "amber", ""));
   } else {
-    L.text("The package appears to include the documents we normally review.", { gap: 6 });
+    L.text("The documents provided cover the items we normally review.", { gap: 6 });
   }
 
   // ---- Questions
@@ -390,14 +479,34 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
     [110, 270, CONTENT_W - 380],
   );
 
-  // ---- About
-  L.heading("About this report");
-  L.text(
-    `This report summarizes the strata documents provided to Condo Wise Guys for this property. It was prepared with the help of AI and ${
-      meta.tier === "expert" ? "checked by our reviewer before delivery" : "quality checked against our BC strata checklist"
-    }. ${meta.ocrPages ? `${meta.ocrPages} scanned pages were read by text recognition, which can misread numbers; check important figures against the source page. ` : ""}It relies on the documents as given: anything not in the package, or changed since, is not covered. It is not a legal opinion, a building inspection, an appraisal, or financial advice. Before removing subjects, confirm important points with the strata manager, and consider advice from a lawyer, notary, or home inspector. Page references are to the PDF pages of the package you provided.`,
-    { size: 9, color: MUTED, gap: 6 },
-  );
+  // ---- Scope of work, assumptions and certification
+  const scope = scopeOfWork(meta);
+  L.heading("Scope of work");
+  for (const [label, body] of scope.terms) {
+    L.text(label, { size: 9.5, font: bold, color: NAVY, gap: 1 });
+    L.text(body, { size: 9, gap: 5 });
+  }
+  L.subheading("Assumptions and limiting conditions");
+  scope.conditions.forEach((c, i) => L.text(`${i + 1}. ${c}`, { size: 9, x: M + 12, gap: 3 }));
+  L.y -= 4;
+  if (scope.certification) {
+    // Keep the certification and the signature together on one page.
+    const certLines = scope.certification.reduce((n, c) => n + L.wrap(`- ${c}`, font, 9, CONTENT_W - 12).length, 0);
+    L.ensure(certLines * 9 * 1.38 + scope.certification.length * 3 + 150);
+    L.heading("Certification");
+    L.text("I certify that, to the best of my knowledge and belief:", { size: 9.5, gap: 3 });
+    scope.certification.forEach((c) => L.text(`- ${c}`, { size: 9, x: M + 12, gap: 3 }));
+    L.y -= 8;
+    L.text(founder.name, { size: 10.5, font: bold, color: NAVY });
+    L.text(founder.designations, { size: 9 });
+    L.text(`Report date: ${fmtDate(meta.preparedOn)}. Signed on my approval for delivery; this report is not sent until I approve it.`, {
+      size: 8.5,
+      color: MUTED,
+      gap: 6,
+    });
+  }
+
+  L.heading("About Condo Wise Guys");
   L.text(
     `Condo Wise Guys is owned by ${founder.name}, ${founder.designations}: ${founder.summary.charAt(0).toLowerCase()}${founder.summary.slice(1)} Read more at condowiseguys.com/about.`,
     { size: 9, color: MUTED, gap: 6 },
