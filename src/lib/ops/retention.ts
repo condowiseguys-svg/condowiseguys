@@ -3,13 +3,13 @@ import { DOCUMENTS_BUCKET, RECORDS_BUCKET, supabaseAdmin } from "@/lib/supabase/
 
 /**
  * Deletes customer information once it is past its retention date (decided 2026-11-19;
- * report period raised from 2 to 5 years on 2026-11-27 for professional record keeping):
- *  - 90 days after delivery: uploaded documents and draft reports, including the copies
- *    kept with the approved report.
- *  - 5 years after delivery: the approved report and record, and the buyer's personal
- *    details on the order (the order itself stays as an anonymous business record).
- * The database decides what is due (database-setup/Step 5 - retention.sql, changed to 5 years
- * by Step 9 - keep reports 5 years.sql) and refuses
+ * changed 2026-11-27 so a delivered report's whole workfile is kept 5 years):
+ *  - Delivered orders, 5 years after delivery: uploaded documents, drafts, the approved
+ *    report and record, and the buyer's personal details on the order (the order itself
+ *    stays as an anonymous business record).
+ *  - Orders with no delivered report (refunded, cancelled, unpaid): uploaded documents
+ *    after 90 days, the rest after 5 years.
+ * The database decides what is due (database-setup/Step 5, then Steps 9 and 10) and refuses
  * to delete anything early, so this code can't remove a file before its date.
  */
 export type RetentionResult = { orderId: string; stage: string; filesDeleted: number; erased: boolean; error?: string };
