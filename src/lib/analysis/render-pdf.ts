@@ -407,16 +407,28 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
 
   // ---- The guide's Top 20 Red Flags
   if (report.red_flags?.length) {
-    L.heading("Red flag check: the Condo Buyers Guide's Top 20");
-    L.text(
-      "We checked the package for each of the 20 red flags in our Condo Buyers Guide (Part 12.2). Red means the flag is present, amber means it is partly present or needs an answer, green means the documents we reviewed do not show it, and not checked means the documents needed were missing or unreadable.",
-      { size: 9.5, color: MUTED, gap: 6 },
-    );
-    TOP_RED_FLAGS.forEach((flag, i) => {
+    // Report only the flags the documents provided let us assess. A flag we couldn't assess is
+    // not evidence that anything is missing: the client's documents may simply be named or
+    // organized differently, so we say nothing about it beyond a count.
+    const assessed = TOP_RED_FLAGS.flatMap((flag, i) => {
       const row = report.red_flags.find((r) => r.n === i + 1);
-      const status = row?.status ?? "not_checked";
-      L.item(`${i + 1}. ${flag}. ${row?.note ?? "Not assessed."}`, status, row?.pages.length ? cite(row.pages) : "", 70);
+      return row && row.status !== "not_checked" ? [{ flag, n: i + 1, row, status: row.status }] : [];
     });
+    if (assessed.length) {
+      L.heading("Red flag check: the Condo Buyers Guide's Top 20");
+      L.text(
+        "We checked the documents provided against the 20 red flags in our Condo Buyers Guide (Part 12.2). Red means the flag is present, amber means it is partly present or needs an answer, and green means the documents we reviewed do not show it.",
+        { size: 9.5, color: MUTED, gap: 6 },
+      );
+      for (const { flag, n, row, status } of assessed) L.item(`${n}. ${flag}. ${row.note}`, status, row.pages.length ? cite(row.pages) : "", 70);
+      const rest = TOP_RED_FLAGS.length - assessed.length;
+      if (rest)
+        L.text(`The other ${rest} red flag${rest === 1 ? "" : "s"} could not be assessed from the documents provided.`, {
+          size: 9,
+          color: MUTED,
+          gap: 6,
+        });
+    }
   }
 
   // ---- Sections
@@ -424,7 +436,7 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
     const s = report.sections.find((x) => x.id === id);
     L.heading(SECTION_TITLES[id]);
     if (!s) {
-      L.text("Nothing in the package covered this area.", { color: MUTED, gap: 6 });
+      L.text("The documents provided did not cover this area.", { color: MUTED, gap: 6 });
       continue;
     }
     L.text(s.intro, { gap: 6 });
@@ -432,11 +444,15 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
   }
 
   // ---- Missing documents
-  L.heading("Documents missing or out of date");
+  L.heading("Documents to ask for");
   if (report.missing_documents.length) {
+    L.text(
+      "We did not find these in the documents provided, or the version provided is out of date. They may exist under another name; if you have them, check them before removing subjects.",
+      { size: 9.5, color: MUTED, gap: 6 },
+    );
     report.missing_documents.forEach((m) => L.item(`${m.document}. ${m.why_it_matters}`, "amber", ""));
   } else {
-    L.text("The package appears to include the documents we normally review.", { gap: 6 });
+    L.text("The documents provided cover the items we normally review.", { gap: 6 });
   }
 
   // ---- Questions

@@ -71,7 +71,7 @@ export const ReportSchema = z.object({
         status: z
           .enum(["red", "amber", "green", "not_checked"])
           .describe(
-            "Scored like the guide's Red Flag Scorecard: red = the documents show this red flag in a serious form; amber = partly present, early signs, or a question to settle; green = the relevant documents were reviewed and do not show it; not_checked = the documents needed to check it were missing or unreadable",
+            "Scored like the guide's Red Flag Scorecard: red = the documents show this red flag in a serious form; amber = partly present, early signs, or a question to settle; green = the relevant documents were reviewed and do not show it; not_checked = the documents provided don't let you assess it (rows scored not_checked are left out of the report, so never use not_checked to signal a problem)",
           ),
         note: z.string().describe("One short sentence on what the documents show, with dates or amounts where useful"),
         pages: z.array(z.number()),
@@ -114,7 +114,7 @@ Rules:
   - Be impartial: present good and bad findings with the same care, and do not recommend or criticize any contractor, manager, insurer or other business.
   - Never comment on the race, colour, religion, national or ethnic origin, sex, sexual orientation, gender identity, age, family status, disability or source of income of owners, residents, neighbours or the area, and never use such characteristics in a finding or rating. Name an owner or resident only by unit number and only when it matters (for example a dispute the strata is party to).
 - Fill every section; if nothing relevant was provided for a section, say so in its intro and leave items empty.
-- List missing documents only from the list you are given or where the notes clearly show something important is missing or out of date.
+- List missing documents only from the list you are given or where the notes clearly show something important is missing or out of date. Before listing one, check the package contents and the notes by what each document is, not what its file is called: documents are often named differently. Describe each as not found in the documents provided, never as something the client or seller failed to provide.
 - service_signals, using only the notes and today's date:
   - depreciation_report: "current" if the newest depreciation report (or update) is dated within 5 years of today; "out_of_date" if it is older than 5 years, or the notes say an update is overdue; "not_found" if the package has no depreciation report and the notes don't show the strata has fewer than 5 lots; "unknown" if you can't tell.
   - insurance_appraisal: "current" if the notes show a replacement cost (insurance) appraisal or appraisal update dated within 3 years of today; "out_of_date" if the newest one is older than 3 years, or the notes say the building may be under-insured; "not_found" if the package has insurance documents but no appraisal date or value basis; "unknown" if there is nothing to go on.
