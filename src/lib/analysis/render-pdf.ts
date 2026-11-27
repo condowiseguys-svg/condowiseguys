@@ -23,6 +23,8 @@ export type ReportMeta = {
    * signed certification; a report sent without his review must not claim one.
    */
   professionallyReviewed: boolean;
+  /** Brian's signature PNG, drawn above his name on the certification. Used only when professionallyReviewed. */
+  signaturePng?: Uint8Array | null;
 };
 
 type Risk = "red" | "amber" | "green";
@@ -492,11 +494,25 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
   if (scope.certification) {
     // Keep the certification and the signature together on one page.
     const certLines = scope.certification.reduce((n, c) => n + L.wrap(`- ${c}`, font, 9, CONTENT_W - 12).length, 0);
-    L.ensure(certLines * 9 * 1.38 + scope.certification.length * 3 + 150);
+    L.ensure(certLines * 9 * 1.38 + scope.certification.length * 3 + 200);
     L.heading("Certification");
     L.text("I certify that, to the best of my knowledge and belief:", { size: 9.5, gap: 3 });
     scope.certification.forEach((c) => L.text(`- ${c}`, { size: 9, x: M + 12, gap: 3 }));
     L.y -= 8;
+    // A signature that can't be embedded must never stop a report; the typed name stays.
+    const sig =
+      meta.professionallyReviewed && meta.signaturePng
+        ? await doc.embedPng(new Uint8Array(meta.signaturePng)).catch((err) => {
+            console.error("signature could not be embedded", err);
+            return null;
+          })
+        : null;
+    if (sig) {
+      const h = 40;
+      const w = Math.min((sig.width / sig.height) * h, 200);
+      L.page.drawImage(sig, { x: M, y: L.y - h, width: w, height: (w / sig.width) * sig.height });
+      L.y -= h + 4;
+    }
     L.text(founder.name, { size: 10.5, font: bold, color: NAVY });
     L.text(founder.designations, { size: 9 });
     L.text(`Report date: ${fmtDate(meta.preparedOn)}. Signed on my approval for delivery; this report is not sent until I approve it.`, {

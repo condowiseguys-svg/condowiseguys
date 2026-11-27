@@ -11,7 +11,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link href="/admin" className="font-semibold text-navy-900">
             Orders dashboard
           </Link>
-          <span className="text-xs text-slate-500">Times in Vancouver time</span>
+          <div className="flex items-center gap-4">
+            <Link href="/admin/signature" className="text-sm text-slate-600 hover:underline">
+              Signature
+            </Link>
+            <span className="text-xs text-slate-500">Times in Vancouver time</span>
+          </div>
         </div>
       </div>
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</div>
