@@ -293,7 +293,7 @@ export function scopeOfWork(meta: Pick<ReportMeta, "buyerName" | "propertyAddres
         `Within the three years before this report, I have performed no services regarding this strata lot or its strata corporation, as an appraiser or in any other capacity, including through ${sisterCompany.shortName}.`,
         "I have not inspected the property.",
         "AI software assisted in reading the documents and drafting this report under my direction. I have reviewed the report and take responsibility for it. No other person provided significant professional assistance.",
-        "This review was carried out in conformity with the requirements of the Uniform Standards of Professional Appraisal Practice (USPAP) that apply to a valuation service that is not an appraisal or appraisal review, namely the Ethics Rule and the Competency Rule.",
+        "This review was carried out in conformity with the Uniform Standards of Professional Appraisal Practice (USPAP), as followed by the Canadian National Association of Real Estate Appraisers (CNAREA), of which I hold the DAR (Designated Appraiser Residential) and DRP (Designated Reserve Planner) designations. Because no opinion of value is given, the USPAP requirements that apply are the Ethics Rule and the Competency Rule.",
       ]
     : null;
   return { terms, conditions, certification };
