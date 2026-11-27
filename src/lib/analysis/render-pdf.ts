@@ -23,6 +23,8 @@ export type ReportMeta = {
    * signed certification; a report sent without his review must not claim one.
    */
   professionallyReviewed: boolean;
+  /** Brian's signature PNG, drawn above his name on the certification. Used only when professionallyReviewed. */
+  signaturePng?: Uint8Array | null;
 };
 
 type Risk = "red" | "amber" | "green";
@@ -293,7 +295,7 @@ export function scopeOfWork(meta: Pick<ReportMeta, "buyerName" | "propertyAddres
         `Within the three years before this report, I have performed no services regarding this strata lot or its strata corporation, as an appraiser or in any other capacity, including through ${sisterCompany.shortName}.`,
         "I have not inspected the property.",
         "AI software assisted in reading the documents and drafting this report under my direction. I have reviewed the report and take responsibility for it. No other person provided significant professional assistance.",
-        "This review was carried out in conformity with the requirements of the Uniform Standards of Professional Appraisal Practice (USPAP) that apply to a valuation service that is not an appraisal or appraisal review, namely the Ethics Rule and the Competency Rule.",
+        "This review was carried out in conformity with the Uniform Standards of Professional Appraisal Practice (USPAP), as followed by the Canadian National Association of Real Estate Appraisers (CNAREA), of which I hold the DAR (Designated Appraiser Residential) and DRP (Designated Reserve Planner) designations. Because no opinion of value is given, the USPAP requirements that apply are the Ethics Rule and the Competency Rule.",
       ]
     : null;
   return { terms, conditions, certification };
@@ -492,11 +494,25 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
   if (scope.certification) {
     // Keep the certification and the signature together on one page.
     const certLines = scope.certification.reduce((n, c) => n + L.wrap(`- ${c}`, font, 9, CONTENT_W - 12).length, 0);
-    L.ensure(certLines * 9 * 1.38 + scope.certification.length * 3 + 150);
+    L.ensure(certLines * 9 * 1.38 + scope.certification.length * 3 + 200);
     L.heading("Certification");
     L.text("I certify that, to the best of my knowledge and belief:", { size: 9.5, gap: 3 });
     scope.certification.forEach((c) => L.text(`- ${c}`, { size: 9, x: M + 12, gap: 3 }));
     L.y -= 8;
+    // A signature that can't be embedded must never stop a report; the typed name stays.
+    const sig =
+      meta.professionallyReviewed && meta.signaturePng
+        ? await doc.embedPng(new Uint8Array(meta.signaturePng)).catch((err) => {
+            console.error("signature could not be embedded", err);
+            return null;
+          })
+        : null;
+    if (sig) {
+      const h = 40;
+      const w = Math.min((sig.width / sig.height) * h, 200);
+      L.page.drawImage(sig, { x: M, y: L.y - h, width: w, height: (w / sig.width) * sig.height });
+      L.y -= h + 4;
+    }
     L.text(founder.name, { size: 10.5, font: bold, color: NAVY });
     L.text(founder.designations, { size: 9 });
     L.text(`Report date: ${fmtDate(meta.preparedOn)}. Signed on my approval for delivery; this report is not sent until I approve it.`, {

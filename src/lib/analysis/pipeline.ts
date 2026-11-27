@@ -3,6 +3,7 @@ import { emailFrom, emailHtml, escapeHtml, sendEmailOnce } from "@/lib/ops/email
 import { missingRequired } from "@/lib/ops/package-checklist";
 import { approveReportVersion, buildManifest, createReportVersion } from "@/lib/ops/records";
 import { adminEmail } from "@/lib/ops/notify";
+import { loadSignature } from "@/lib/ops/signature";
 import { siteUrl } from "@/lib/ops/urls";
 import { DOCUMENTS_BUCKET, supabaseAdmin } from "@/lib/supabase/admin";
 import { cachedStep, stepPath } from "./cache";
@@ -132,6 +133,10 @@ export async function draftReport(orderId: string, submission: number, runId: st
   // 5. Draw the PDF and save it as a draft version. The draft date is fixed by the saved
   // step so a retry produces the same file.
   const meta = await cachedStep(path(`meta-${runSlug}`), async () => ({ preparedOn: new Date().toISOString() }));
+  // Brian checks and approves every report except Standard ones sent automatically; only
+  // those he approves carry his certification and signature.
+  const professionallyReviewed = order.tier === "expert" || !autoSendStandard();
+  const signaturePng = professionallyReviewed ? await loadSignature() : null;
   const pdf = await renderReportPdf(
     report,
     segments,
@@ -147,8 +152,8 @@ export async function draftReport(orderId: string, submission: number, runId: st
       fileCount: manifest.length,
       ocrPages,
       contactEmail: contactEmail(),
-      // Brian checks and approves every report except Standard ones sent automatically.
-      professionallyReviewed: order.tier === "expert" || !autoSendStandard(),
+      professionallyReviewed,
+      signaturePng,
     },
     cite,
   );
