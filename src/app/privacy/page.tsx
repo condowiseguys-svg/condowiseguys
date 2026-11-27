@@ -83,14 +83,17 @@ export default function PrivacyPage() {
 
       <Section title="How long we keep it">
         <ul className="list-disc space-y-1 pl-6">
-          <li>Uploaded documents are deleted automatically 90 days after your report is delivered.</li>
           <li>
-            Your report and order record are kept for 5 years after delivery, the period professional
+            Your report, the documents you uploaded for it and your order record are kept for 5 years after
+            delivery, the period professional
             appraisal standards and our professional liability insurance expect us to keep our work,
             and then deleted. At that point we also erase your name and contact details from the
             order, keeping only the amount and dates as a business record.
           </li>
-          <li>Orders that are cancelled or never paid follow the same schedule from the order date.</li>
+          <li>
+            If an order is cancelled, refunded or never paid, so no report is delivered, its uploaded documents are
+            deleted 90 days after the order date (or refund), and the rest after 5 years.
+          </li>
           <li>
             If you opted in to emails from {SISTER}, we keep your name, email and consent record
             until you unsubscribe.

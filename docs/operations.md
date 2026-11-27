@@ -34,17 +34,18 @@ Corrections are a new version; the earlier approved one stays as it was.
 
 ## Retention (how long things are kept)
 
-Decided 2026-11-19; reports kept 5 years instead of 2 from 2026-11-27, because signed reports
-are professional work (USPAP-style record keeping, E&O claims). Set up by
-`database-setup/Step 5 - retention.sql`, then `Step 9 - keep reports 5 years.sql`; runs daily from Vercel
+Decided 2026-11-19; on 2026-11-27 reports (Step 9) and then their uploaded documents (Step 10)
+moved to 5 years, because signed reports are professional work (USPAP record keeping, E&O
+claims) and the documents are their workfile. Set up by `database-setup/Step 5 - retention.sql`,
+then `Step 9 - keep reports 5 years.sql` and `Step 10 - keep documents 5 years.sql`; runs daily from Vercel
 (`/api/cron/retention`, needs `CRON_SECRET` in Vercel).
 
-- **90 days after delivery** (or refund): uploaded documents and draft reports are deleted,
-  including the document copies in `order-records`. The approved report and `record.json` stay.
-- **5 years after delivery:** the approved report and `record.json` are deleted, and the buyer's
+- **Delivered orders, 5 years after delivery:** uploaded documents, drafts, the approved report
+  and `record.json` are all deleted (both buckets), and the buyer's
   name, email, phone, address and notes are erased from the order, its emails and its event log.
   The order row stays (tier, amount, dates) as an anonymous business record.
-- **Cancelled or unpaid orders:** same schedule, counted from the order date.
+- **Refunded, cancelled or unpaid orders** (no report delivered): uploaded documents are deleted
+  90 days after the refund or order date; everything else after 5 years.
 - **In-progress orders** are never touched.
 
 "Permanent" above means permanent until these dates: the database refuses any earlier delete.
