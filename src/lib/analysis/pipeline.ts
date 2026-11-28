@@ -14,6 +14,7 @@ import { composeReport, type Report } from "./compose";
 import { extractDocument, type PageText } from "./extract";
 import { makeCiter, numberPages } from "./pages";
 import { mapLimit } from "./pool";
+import { REVIEW_CHECKLIST } from "./qc";
 import { renderReportPdf } from "./render-pdf";
 import { groupChunks, reviewGroup, type GroupReview, type OrderContext } from "./review";
 
@@ -208,24 +209,25 @@ export async function routeDraft(
       html: emailHtml(
         [
           `The draft report for <strong>${escapeHtml(order.property_address)}</strong> (${order.tier === "expert" ? "Expert Reviewed" : "Standard"}) is ready.`,
-          `Risk profile: <strong>${escapeHtml(rating)}</strong>.${
+          `Overall assessment: <strong>${escapeHtml(rating)}</strong>.${
             missing.length ? ` Not found in the package: ${missing.map(escapeHtml).join(", ")}.` : ""
           }`,
           ...(qcProblems.length
             ? [`<strong>Automated checks still flag:</strong><br>${qcProblems.map((p) => `&bull; ${escapeHtml(p)}`).join("<br>")}`]
             : []),
           order.tier === "expert"
-            ? "Expert review: confirm the priorities, the financial interpretation and the summary, then approve to sign."
-            : "Standard release check (10 to 15 minutes): page 1 and the key numbers against their source pages.",
+            ? "Expert review: confirm the ratings, the financial interpretation and the executive summary, then approve to sign."
+            : "Standard release check (10 to 15 minutes): sections 2, 5, 6 and 7 (overall assessment, top findings, key numbers, levies) against their source pages.",
+          `Final quality control (report standard):<br>${REVIEW_CHECKLIST.map((c, i) => `${i + 1}. ${escapeHtml(c)}`).join("<br>")}`,
           "Before approving, please check by hand:",
-          `&bull; every key finding and the cost exposure figures against the pages they cite;<br>&bull; the scanned pages, which were read by text recognition: ${escapeHtml(
+          `&bull; every top finding, key number and levy figure against the pages they cite;<br>&bull; the scanned pages, which were read by text recognition: ${escapeHtml(
             pagesToCheck.scanned || "none",
           )}${pagesToCheck.unreadable ? `;<br>&bull; <strong>pages that could not be read at all: ${escapeHtml(pagesToCheck.unreadable)}</strong>` : ""}.`,
           "Then approve and send it, write a new draft, or ask the buyer for more documents.",
         ],
         { href: link, label: "Open the order" },
       ),
-      text: `The draft report for ${order.property_address} is ready. Risk profile: ${rating}.${qcProblems.length ? `\nAutomated checks still flag: ${qcProblems.join("; ")}` : ""}\nCheck the top findings against their pages, and the scanned pages: ${
+      text: `The draft report for ${order.property_address} is ready. Overall assessment: ${rating}.${qcProblems.length ? `\nAutomated checks still flag: ${qcProblems.join("; ")}` : ""}\nFinal quality control:\n${REVIEW_CHECKLIST.map((c, i) => `${i + 1}. ${c}`).join("\n")}\nCheck the top findings against their pages, and the scanned pages: ${
         pagesToCheck.scanned || "none"
       }${pagesToCheck.unreadable ? `\nCould not be read: ${pagesToCheck.unreadable}` : ""}\n${link}\n`,
     });

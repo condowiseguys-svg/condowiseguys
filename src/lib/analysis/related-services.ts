@@ -1,6 +1,10 @@
 import type { Report } from "./compose";
 
-/** Plain-language suggestions tied to what the review found. */
+/**
+ * Section 18: related services, only where a finding calls for one. There is deliberately no
+ * offer to appraise the unit itself: a reviewer selling a valuation of the property under
+ * review would undercut the independence the report relies on.
+ */
 export function relatedServiceNotes(signals: Report["service_signals"] | undefined) {
   const notes: string[] = [];
   const dr = signals?.depreciation_report;
@@ -21,8 +25,5 @@ export function relatedServiceNotes(signals: Report["service_signals"] | undefin
     notes.push(
       "We couldn't find how the building's insured value was set. Ask the strata manager when the last insurance appraisal was done. DreamHomeGroup.ca prepares replacement cost appraisals for strata insurance.",
     );
-  notes.push(
-    "Want an independent opinion of the unit's market value before you remove subjects? DreamHomeGroup.ca provides market value appraisals.",
-  );
   return notes;
 }

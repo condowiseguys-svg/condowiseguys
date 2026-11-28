@@ -58,23 +58,17 @@ export const SATISFIES: Partial<Record<DocType, PackageItemId>> = {
 };
 
 /**
- * How every finding is prioritized. Dollar thresholds give the writer a testable rule, so
- * ordinary items stay routine instead of drifting to "moderate". Priorities describe how much
- * a finding matters; they never tell the buyer what to do (no purchase advice).
+ * The Condo Wise Guys traffic-light rating (docs/report-standard.md), with cost thresholds
+ * so that ratings are supported by the documents and ordinary items stay GREEN instead of
+ * drifting to AMBER. Ratings describe how much a finding matters; they never tell the buyer
+ * what to do (no purchase advice).
  */
-export const PRIORITY_METHOD = `Give every finding a priority by how much it could matter to a buyer of this unit:
-- high: a documented issue with a plausible cost to this lot of more than about $10,000 (estimate the lot's share by unit entitlement where you can); or a legal, insurance or ownership matter that could change whether the home suits the buyer (for example a large deductible that can be charged to the owner, an open lawsuit with material exposure, insurer conditions for renewal); or major work forecast with reserves far short of it.
-- moderate: a plausible cost to this lot of about $2,000 to $10,000; a trend worth monitoring (rising fees, repeated overruns, recurring but contained leaks); or a material question the documents can't answer (a missing document that sets the scope or cost of upcoming work).
-- routine: everything else: normal maintenance and repairs, administration, small disputes, rules, and reassuring findings. Routine is the normal case; most items in most packages are routine.
-Do not inflate. Pest control, move-in fees, gym rules, quiet hours and similar items are routine. Lifestyle bylaws and rules (pets, smoking, rentals, business use, renovations needing approval) are not risks: report them as facts to check against the buyer's plans, rated routine, unless the buyer's notes say they conflict with how the buyer plans to live (then high) or the bylaw shifts costs to owners (deductible chargebacks, owner repair responsibility for windows, doors, balconies or pipes: rate by exposure).
+export const RATING_METHOD = `Rate every finding with the Condo Wise Guys traffic-light system:
+- red: a significant concern requiring careful consideration, further investigation or professional advice. Use it for a documented issue with a plausible cost to this lot of more than about $10,000 (estimate the lot's share by unit entitlement where you can); a legal, insurance or ownership matter that could change whether the home suits the buyer (for example a large deductible that can be charged to the owner, an open lawsuit with material exposure, insurer conditions for renewal); or major work forecast with reserves far short of it.
+- amber: a matter requiring clarification, planning, negotiation or attention: a plausible cost to this lot of about $2,000 to $10,000; a trend worth monitoring (rising fees, repeated overruns, recurring but contained leaks); or a material question the documents can't answer (a missing document that sets the scope or cost of upcoming work).
+- green: a reassuring finding, or a matter reviewed without an identified material concern: normal maintenance and repairs, administration, small disputes, ordinary rules. Green is the normal case; most items in most packages are green.
+Ratings must be supported by the documents. Never exaggerate a concern to make the report look more valuable. Pest control, move-in fees, gym rules, quiet hours and similar items are green. Bylaws on pets, smoking, rentals, business use and renovations are reported for their practical effect and rated green, unless the buyer's notes say they conflict with how the buyer plans to live (then red) or the bylaw shifts costs to owners (deductible chargebacks, owner repair responsibility for windows, doors, balconies or pipes: rate by exposure).
 Tag each finding's evidence: "documented" when a document states it, "interpretation" when it is your professional reading of what documented facts suggest. Word interpretations as such ("this suggests", "this is consistent with"), never as fact.`;
-
-/** Labels used in the PDF. */
-export const PRIORITY_LABEL: Record<"high" | "moderate" | "routine", string> = {
-  high: "High",
-  moderate: "Moderate",
-  routine: "Routine",
-};
 
 /** The Top 20 Red Flags from the Condo Buyers Guide (Part 12.2), in the guide's order. Every report checks each one. */
 export const TOP_RED_FLAGS = [
@@ -188,7 +182,7 @@ export const REVIEW_GROUPS: ReviewGroup[] = [
 - Repair and maintenance responsibility: which parts of the building (windows, doors, balcony membranes, pipes) the bylaws make owners responsible for.
 - Noise and quiet hours, occupancy limits, move-in fees, and fine amounts.
 - Whether council rules have been ratified at a general meeting.
-- Pets, smoking, rentals, business use and renovation approvals are facts for the buyer to check against their plans: report them as routine findings unless the buyer's notes conflict with them or they shift costs to owners.
+- Pets, smoking, rentals, business use and renovation approvals are facts for the buyer to check against their plans: report their practical effect as green findings unless the buyer's notes conflict with them or they shift costs to owners.
 - Red flags from the buyers guide (Part 9.4), each to be reported if present: a bylaw that conflicts with the buyer's stated plans (pets, renovations, home business, short-term rental income); bylaw amendments passed but not filed, or proposed for the next AGM; frequent fines or bylaw disputes; bylaws placing unusually broad repair or insurance responsibility on owners (windows, balcony membranes, pipes serving other units); outdated rental or age bylaws that the strata still tries to enforce.`,
   },
   {

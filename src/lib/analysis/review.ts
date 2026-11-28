@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import { askForJson } from "./claude";
-import { DOC_TYPE_LABEL, PRIORITY_METHOD, type ReviewGroup } from "./checklist";
+import { DOC_TYPE_LABEL, RATING_METHOD, type ReviewGroup } from "./checklist";
 import type { Segment } from "./classify";
 import { renderPages, type PackagePage } from "./pages";
 
@@ -11,7 +11,7 @@ export type OrderContext = {
   notes: string | null;
 };
 
-const Priority = z.enum(["high", "moderate", "routine"]);
+const Rating = z.enum(["red", "amber", "green"]);
 
 export const GroupReviewSchema = z.object({
   facts: z
@@ -27,7 +27,7 @@ export const GroupReviewSchema = z.object({
     z.object({
       title: z.string().describe("A short headline"),
       detail: z.string().describe("Two to four plain-language sentences: what the documents say and why it matters to a buyer"),
-      priority: Priority.describe("By the priority method in the instructions; most findings are routine"),
+      rating: Rating.describe("By the rating method in the instructions; most findings are green"),
       evidence: z.enum(["documented", "interpretation"]).describe("documented = a document states it; interpretation = your reading of what documented facts suggest"),
       pages: z.array(z.number()).describe("Package pages that support this finding"),
     }),
@@ -80,8 +80,8 @@ Rules:
 - Give amounts in dollars as written in the documents.
 - Focus on what affects the buyer's costs, risks, and use of the unit. Skip routine items that do not matter to a buyer.
 - Prefer the newest information. When documents conflict, say which is newer.
-- Be balanced: include reassuring findings too (rated routine), not only problems.
-- When the checklist names a red flag and the documents show it, report it as its own finding. When you looked for one of the main red flags and the documents show it is absent (for example no approved levies, no lawsuits), a short routine finding saying so is useful.
+- Be balanced: include reassuring findings too (rated green), not only problems.
+- When the checklist names a red flag and the documents show it, report it as its own finding. When you looked for one of the main red flags and the documents show it is absent (for example no approved levies, no lawsuits), a short green finding saying so is useful.
 - Recurring matters across meetings belong in issues (one row each), not in a finding per meeting. Disagreements between documents belong in conflicts.
 - A page reading "[scanned page that could not be read]" is not blank: say it could not be read. Read transcribed scanned pages as carefully as the rest.
 - Separate projections (e.g. a depreciation report's funding model) from decisions owners actually made.
@@ -89,7 +89,7 @@ Rules:
 - Do not give an opinion of the unit's value or price. Note legal, building-condition and insurance questions as matters to confirm with the right professional rather than concluding them.
 - Never note the race, colour, religion, national or ethnic origin, sex, sexual orientation, gender identity, age, family status, disability or source of income of owners, residents or neighbours. Refer to owners by unit number, and leave out names of private individuals.
 
-${PRIORITY_METHOD}`;
+${RATING_METHOD}`;
 
 /** Pages for each group, split so that one request stays well inside the context window. */
 export function groupChunks(group: ReviewGroup, segments: Segment[], pages: PackagePage[], maxChars = 400_000) {
