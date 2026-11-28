@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import { askForJson } from "./claude";
-import { DOC_TYPE_LABEL, RISK_METHOD, type ReviewGroup } from "./checklist";
+import { DOC_TYPE_LABEL, RATING_METHOD, type ReviewGroup } from "./checklist";
 import type { Segment } from "./classify";
 import { renderPages, type PackagePage } from "./pages";
 
@@ -11,7 +11,7 @@ export type OrderContext = {
   notes: string | null;
 };
 
-const Risk = z.enum(["red", "amber", "green"]);
+const Rating = z.enum(["red", "amber", "green"]);
 
 export const GroupReviewSchema = z.object({
   facts: z
@@ -27,10 +27,33 @@ export const GroupReviewSchema = z.object({
     z.object({
       title: z.string().describe("A short headline"),
       detail: z.string().describe("Two to four plain-language sentences: what the documents say and why it matters to a buyer"),
-      risk: Risk.describe("Traffic light method: red = stop and think hard; amber = negotiate or protect yourself; green = note and budget"),
+      rating: Rating.describe("By the rating method in the instructions; most findings are green"),
+      evidence: z.enum(["documented", "interpretation"]).describe("documented = a document states it; interpretation = your reading of what documented facts suggest"),
       pages: z.array(z.number()).describe("Package pages that support this finding"),
     }),
   ),
+  issues: z
+    .array(
+      z.object({
+        issue: z.string().describe("Short name, e.g. 'Membrane leaks (patio, planter, roof)'"),
+        first_recorded: z.string().describe("Date of the first meeting or document that records it, e.g. 'May 2024'"),
+        last_recorded: z.string(),
+        mentions: z.number().nullable().describe("Number of meetings or documents that mention it, if you counted"),
+        status: z.enum(["open", "in_progress", "resolved", "unknown"]),
+        status_note: z.string().describe("One short phrase on where it stood at the last record"),
+        cost: z.string().nullable().describe("Cost or estimate if the documents give one, else null"),
+        pages: z.array(z.number()),
+      }),
+    )
+    .describe("Recurring issues that appear in more than one meeting or document; empty if none"),
+  conflicts: z
+    .array(
+      z.object({
+        what: z.string().describe("What disagrees, e.g. 'CRF balance: Form B $1,683,266 (Apr 30 2026) vs statements $2,082,521 (Mar 31 2026)'"),
+        pages: z.array(z.number()),
+      }),
+    )
+    .describe("Places where two documents, or two parts of one document, disagree; empty if none"),
   levies: z
     .array(
       z.object({
@@ -57,15 +80,16 @@ Rules:
 - Give amounts in dollars as written in the documents.
 - Focus on what affects the buyer's costs, risks, and use of the unit. Skip routine items that do not matter to a buyer.
 - Prefer the newest information. When documents conflict, say which is newer.
-- Be balanced: include reassuring (green) findings too, not only problems.
-- When the checklist names a red flag and the documents show it, report it as its own finding. When you looked for one of the main red flags and the documents show it is absent (for example no approved levies, no lawsuits), a short green finding is useful.
+- Be balanced: include reassuring findings too (rated green), not only problems.
+- When the checklist names a red flag and the documents show it, report it as its own finding. When you looked for one of the main red flags and the documents show it is absent (for example no approved levies, no lawsuits), a short green finding saying so is useful.
+- Recurring matters across meetings belong in issues (one row each), not in a finding per meeting. Disagreements between documents belong in conflicts.
 - A page reading "[scanned page that could not be read]" is not blank: say it could not be read. Read transcribed scanned pages as carefully as the rest.
 - Separate projections (e.g. a depreciation report's funding model) from decisions owners actually made.
 - When comparing results to a budget, say whether the budget figure is year-to-date or full-year.
 - Do not give an opinion of the unit's value or price. Note legal, building-condition and insurance questions as matters to confirm with the right professional rather than concluding them.
 - Never note the race, colour, religion, national or ethnic origin, sex, sexual orientation, gender identity, age, family status, disability or source of income of owners, residents or neighbours. Refer to owners by unit number, and leave out names of private individuals.
 
-${RISK_METHOD}`;
+${RATING_METHOD}`;
 
 /** Pages for each group, split so that one request stays well inside the context window. */
 export function groupChunks(group: ReviewGroup, segments: Segment[], pages: PackagePage[], maxChars = 400_000) {

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { site, sisterCompany, sisterLink } from "@/lib/site";
+import { reviewScope, site, sisterCompany, sisterLink } from "@/lib/site";
 
 export function SiteFooter() {
   return (
@@ -39,8 +39,7 @@ export function SiteFooter() {
       </div>
       <div className="border-t border-white/10">
         <p className="mx-auto max-w-6xl px-4 py-5 text-xs leading-5 text-silver-200/70 sm:px-6">
-          Our reports are document reviews. They are not legal advice, a home
-          inspection, an engineering assessment or an appraisal. © {new Date().getFullYear()}{" "}
+          {reviewScope.short} © {new Date().getFullYear()}{" "}
           {site.name}.
         </p>
       </div>

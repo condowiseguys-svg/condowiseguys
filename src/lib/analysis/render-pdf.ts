@@ -1,9 +1,11 @@
-import { PDFDocument, PDFName, PDFString, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
-import { founder, sisterCompany, sisterLink } from "@/lib/site";
-import { DOC_TYPE_LABEL, RISK_ACTION, TOP_RED_FLAGS } from "./checklist";
+import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
+import { founder, reviewScope } from "@/lib/site";
+import { DOC_TYPE_LABEL, TOP_RED_FLAGS } from "./checklist";
 import type { Segment } from "./classify";
-import { SECTION_IDS, SECTION_TITLES, type Report } from "./compose";
+import { ANALYSIS_IDS, SECTION_TITLES, analysisSection, byRating, type Report } from "./compose";
+import { aboutDollars, deriveMetrics, money, parseDollars } from "./derive";
 import { LOGO_JPEG_BASE64 } from "./logo";
+import { relatedServiceNotes } from "./related-services";
 
 export type ReportMeta = {
   orderId: string;
@@ -18,24 +20,40 @@ export type ReportMeta = {
   ocrPages: number;
   contactEmail: string;
   /**
-   * True when Brian reviews and approves this report before it is sent (Expert orders, and
-   * Standard orders while AUTO_SEND_STANDARD is off). Only then does the report carry his
-   * signed certification; a report sent without his review must not claim one.
+   * True when Brian checks this report before it is sent: every Expert order, and Standard
+   * orders while AUTO_SEND_STANDARD is off (the release check). Only an Expert report carries
+   * his signed Reviewer's statement; a Standard report says it was checked, not reviewed.
    */
   professionallyReviewed: boolean;
-  /** Brian's signature PNG, drawn above his name on the certification. Used only when professionallyReviewed. */
+  /** Brian's signature PNG, drawn on the Reviewer's statement of a reviewed Expert report. */
   signaturePng?: Uint8Array | null;
 };
 
-type Risk = "red" | "amber" | "green";
-type Cite = (pages: number[]) => string;
+type Cite = (pages: number[], max?: number) => string;
+type Tag = { label: string; color: RGB };
 
 const NAVY = rgb(0.06, 0.12, 0.25);
 const TEXT = rgb(0.12, 0.14, 0.18);
 const MUTED = rgb(0.4, 0.44, 0.5);
 const RULE = rgb(0.86, 0.88, 0.91);
-const RISK_COLOR: Record<Risk, RGB> = { red: rgb(0.78, 0.13, 0.13), amber: rgb(0.8, 0.5, 0.02), green: rgb(0.06, 0.55, 0.32) };
-const RISK_LABEL: Record<Risk, string> = { red: "Red", amber: "Amber", green: "Green" };
+const SOFT = rgb(0.96, 0.97, 0.99);
+const RED = rgb(0.72, 0.15, 0.15);
+const AMBER = rgb(0.8, 0.5, 0.02);
+const GREEN = rgb(0.1, 0.5, 0.32);
+
+/** The Condo Wise Guys traffic-light rating (docs/report-standard.md). */
+const TAG = {
+  red: { label: "RED", color: RED },
+  amber: { label: "AMBER", color: AMBER },
+  green: { label: "GREEN", color: GREEN },
+} satisfies Record<string, Tag>;
+
+const RATING_LEGEND = {
+  red: "RED: significant concern requiring careful consideration, further investigation or professional advice.",
+  amber: "AMBER: a matter requiring clarification, planning, negotiation or attention.",
+  green: "GREEN: reassuring, or reviewed without an identified material concern.",
+};
+const LEVY_STATUS = { approved: "Approved", proposed: "Proposed", forecast: "Forecast" } as const;
 
 const W = 612;
 const H = 792;
@@ -150,24 +168,44 @@ class Layout {
     this.text(text, { size: 11, font: this.bold, color: NAVY, gap: 2 });
   }
 
-  pill(risk: Risk | "not_checked", x: number, yTop: number) {
-    const label = risk === "not_checked" ? "Not checked" : RISK_LABEL[risk];
-    const w = this.bold.widthOfTextAtSize(label, 8) + 12;
-    this.page.drawRectangle({ x, y: yTop - 12, width: w, height: 12, color: risk === "not_checked" ? MUTED : RISK_COLOR[risk] });
-    this.page.drawText(label, { x: x + 6, y: yTop - 9, size: 8, font: this.bold, color: rgb(1, 1, 1) });
+  pill(tag: Tag, x: number, yTop: number) {
+    const w = this.bold.widthOfTextAtSize(tag.label, 7.5) + 10;
+    this.page.drawRectangle({ x, y: yTop - 11.5, width: w, height: 11.5, color: tag.color });
+    this.page.drawText(tag.label, { x: x + 5, y: yTop - 8.5, size: 7.5, font: this.bold, color: rgb(1, 1, 1) });
     return w;
   }
 
-  /** A finding: risk pill on the left, text, and its page reference underneath. */
-  item(text: string, risk: Risk | "not_checked" | null, source: string, indent = 52) {
-    const lines = this.wrap(text, this.font, 10, CONTENT_W - indent);
-    this.ensure(Math.min(lines.length, 3) * 13.8 + 16);
-    const top = this.y;
-    if (risk) this.pill(risk, M, top - 1);
-    else this.page.drawCircle({ x: M + 4, y: top - 6, size: 2, color: MUTED });
-    this.text(text, { x: M + indent });
+  /** A line or paragraph with a priority pill on the left and its source underneath. */
+  tagged(text: string, tag: Tag, source: string, indent = 68, size = 9.5, font?: PDFFont) {
+    const lines = this.wrap(text, font ?? this.font, size, CONTENT_W - indent);
+    this.ensure(Math.min(lines.length, 3) * size * 1.38 + 16);
+    this.pill(tag, M, this.y - 1);
+    this.text(text, { x: M + indent, size, font });
     if (source) this.text(`Source: ${source}`, { x: M + indent, size: 8, color: MUTED });
-    this.y -= 6;
+    this.y -= 5;
+  }
+
+  /** An unrated point with its source. */
+  bullet(text: string, source: string) {
+    this.ensure(28);
+    this.page.drawCircle({ x: M + 6, y: this.y - 6, size: 1.8, color: MUTED });
+    this.text(text, { x: M + 16, size: 9.5 });
+    if (source) this.text(`Source: ${source}`, { x: M + 16, size: 8, color: MUTED });
+    this.y -= 4;
+  }
+
+  /** A shaded box with a bold title, kept on one page. */
+  box(title: string, body: string) {
+    const pad = 10;
+    const size = 8.5;
+    const lh = size * 1.38;
+    const lines = this.wrap(body, this.font, size, CONTENT_W - 2 * pad);
+    const h = pad + 13 + lines.length * lh + pad - 3;
+    this.ensure(h + 8);
+    this.page.drawRectangle({ x: M, y: this.y - h, width: CONTENT_W, height: h, color: SOFT, borderColor: RULE, borderWidth: 0.8 });
+    this.page.drawText(title, { x: M + pad, y: this.y - pad - 9, size: 9.5, font: this.bold, color: NAVY });
+    lines.forEach((t, i) => this.page.drawText(t, { x: M + pad, y: this.y - pad - 13 - size - i * lh, size, font: this.font, color: TEXT }));
+    this.y -= h + 8;
   }
 
   table(headers: string[], rows: string[][], widths: number[]) {
@@ -185,127 +223,76 @@ class Layout {
       this.y -= h;
       this.page.drawRectangle({ x: M, y: this.y, width: CONTENT_W, height: 0.6, color: RULE });
     };
-    drawRow(headers, this.bold, MUTED);
+    if (headers.some(Boolean)) drawRow(headers, this.bold, MUTED);
     for (const r of rows) drawRow(r, this.font, TEXT);
     this.y -= 8;
   }
-}
-
-/** Draws a line of text that opens a web address when clicked. */
-function drawLink(L: Layout, label: string, url: string, size = 10) {
-  L.ensure(size * 1.6);
-  const y = L.y - size;
-  const w = L.bold.widthOfTextAtSize(label, size);
-  L.page.drawText(label, { x: M, y, size, font: L.bold, color: rgb(0.12, 0.36, 0.85) });
-  const annot = L.doc.context.obj({
-    Type: "Annot",
-    Subtype: "Link",
-    Rect: [M, y - 2, M + w, y + size],
-    Border: [0, 0, 0],
-    A: { Type: "Action", S: "URI", URI: PDFString.of(url) },
-  });
-  const ref = L.doc.context.register(annot);
-  const annots = L.page.node.lookup(PDFName.of("Annots"));
-  if (annots && "push" in annots) (annots as { push: (r: unknown) => void }).push(ref);
-  else L.page.node.set(PDFName.of("Annots"), L.doc.context.obj([ref]));
-  L.y -= size * 1.6;
-}
-
-/** Plain-language suggestions tied to what the review found. */
-export function relatedServiceNotes(signals: Report["service_signals"] | undefined) {
-  const notes: string[] = [];
-  const dr = signals?.depreciation_report;
-  const ins = signals?.insurance_appraisal;
-  if (dr === "out_of_date")
-    notes.push(
-      "The strata's depreciation report appears to be more than 5 years old. BC strata corporations with 5 or more lots must get a new one at least every 5 years. DreamHomeGroup.ca prepares depreciation reports in BC, and the strata council can ask for a quote.",
-    );
-  if (dr === "not_found")
-    notes.push(
-      "No depreciation report was in the package. Ask the seller for it first. If the strata doesn't have a current one, DreamHomeGroup.ca prepares depreciation reports in BC.",
-    );
-  if (ins === "out_of_date")
-    notes.push(
-      "The strata's insurance appraisal appears to be more than 3 years old, which can leave the building under-insured. DreamHomeGroup.ca prepares replacement cost appraisals for strata insurance.",
-    );
-  if (ins === "not_found")
-    notes.push(
-      "We couldn't find how the building's insured value was set. Ask the strata manager when the last insurance appraisal was done. DreamHomeGroup.ca prepares replacement cost appraisals for strata insurance.",
-    );
-  notes.push(
-    "Want an independent opinion of the unit's market value before you remove subjects? DreamHomeGroup.ca provides market value appraisals.",
-  );
-  return notes;
-}
-
-/**
- * The report's scope of work, assumptions and limiting conditions, and (only when Brian
- * reviews the report before it is sent) his certification. Written to meet the parts of
- * USPAP that apply to a valuation service that is not an appraisal or appraisal review:
- * the Ethics Rule (honest, impartial, not misleading, conflicts disclosed) and the
- * Competency Rule (scope stated; legal, building and insurance questions referred out).
- * No opinion of value is given, so Standards 1 and 2 (real property appraisal) do not apply.
- */
-export function scopeOfWork(meta: Pick<ReportMeta, "buyerName" | "propertyAddress" | "unitNumber" | "strataPlan" | "ocrPages" | "professionallyReviewed">) {
-  const lot = [meta.unitNumber ? `unit ${meta.unitNumber}` : null, meta.propertyAddress, meta.strataPlan ? `strata plan ${meta.strataPlan}` : null]
-    .filter(Boolean)
-    .join(", ");
-  const reviewed = meta.professionallyReviewed;
-  const terms: [string, string][] = [
-    ["Client and intended user", `${meta.buyerName}, who ordered this report. The client may share it with their lawyer, notary, realtor or lender, but no one other than the client should rely on it.`],
-    [
-      "Intended use",
-      `To help the client understand the strata documents for ${lot} and decide what to confirm before removing subjects on a purchase. It is not intended for any other use, such as lending, valuation, insurance or litigation.`,
-    ],
-    [
-      "Type of service",
-      "A review of the strata documents provided. No opinion of the property's value was developed or is reported, so this is not an appraisal or an appraisal review. It is also not a building inspection, a depreciation report, a legal opinion, insurance advice or financial advice.",
-    ],
-    [
-      "Work performed",
-      `Every page of the package provided was read${meta.ocrPages ? `, including ${meta.ocrPages} scanned pages read by text recognition` : ""}. AI software was used to read the documents, extract figures and draft the findings, which were checked against our BC strata document checklist${
-        reviewed ? ` and then reviewed by ${founder.name}, who is responsible for this report` : ""
-      }. Findings cite the package pages they come from.`,
-    ],
-    [
-      "Work not performed",
-      "We did not inspect the building or the unit, contact the strata corporation, its manager, council or the seller, search title, or check the documents against any other source. Information is as of the dates of the documents reviewed, listed above.",
-    ],
-  ];
-  if (!reviewed)
-    terms.push([
-      "Review",
-      "This Standard report was produced by our review process and was not individually reviewed by an appraiser before it was sent.",
-    ]);
-  const conditions = [
-    "The documents provided are assumed to be authentic, complete for what they cover, and accurate. We did not audit them. If they are incomplete, out of date or wrong, the findings may change.",
-    "Estimated special levy shares for this unit are illustrations. They assume a cost is shared by unit entitlement across the whole strata (or the section named). The actual share depends on the levy resolution, and a change in that assumption would change the estimates.",
-    "Depreciation report forecasts and funding models are the report author's projections, not decisions by the owners. They are reported as given and were not re-estimated.",
-    "Text recognition and AI extraction can misread figures. Check any figure that matters to your decision against the source page cited.",
-    "Comments on bylaws, legal proceedings, building condition and insurance identify matters to confirm. They are not legal, engineering or insurance advice; confirm them with a lawyer or notary, a home inspector or engineer, and your insurance agent or broker.",
-    "Nothing after the date of this report, or outside the package provided, is covered.",
-  ];
-  const certification = reviewed
-    ? [
-        "The statements of fact in this report are true and correct, based on the documents provided.",
-        "The analyses and conclusions are limited only by the scope of work, assumptions and limiting conditions stated in this report, and are my personal, impartial and unbiased professional analyses and conclusions.",
-        "I have no present or prospective interest in the property that is the subject of this report, and no personal interest with respect to the parties involved.",
-        "I have no bias with respect to the property or to the parties involved in this assignment.",
-        "My engagement was not contingent on developing or reporting predetermined results, and my compensation is not contingent on the conclusions reached, on whether the purchase completes, or on any later event.",
-        `Within the three years before this report, I have performed no services regarding this strata lot or its strata corporation, as an appraiser or in any other capacity, including through ${sisterCompany.shortName}.`,
-        "I have not inspected the property.",
-        "AI software assisted in reading the documents and drafting this report under my direction. I have reviewed the report and take responsibility for it. No other person provided significant professional assistance.",
-        "This review was carried out in conformity with the Uniform Standards of Professional Appraisal Practice (USPAP), as followed by the Canadian National Association of Real Estate Appraisers (CNAREA), of which I hold the DAR (Designated Appraiser Residential) and DRP (Designated Reserve Planner) designations. Because no opinion of value is given, the USPAP requirements that apply are the Ethics Rule and the Competency Rule.",
-      ]
-    : null;
-  return { terms, conditions, certification };
 }
 
 function fmtDate(d: Date) {
   return d.toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric", timeZone: "America/Vancouver" });
 }
 
-/** Draws the finished report as a PDF. */
+const dollars2 = (n: number) => `$${n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const pct = (x: number) => `about ${x < 0.01 ? (x * 100).toFixed(2) : x < 0.1 ? (Math.round(x * 1000) / 10).toFixed(1).replace(/\.0$/, "") : Math.round(x * 100)}%`;
+const firstYear = (s: string) => {
+  const m = s.match(/\b(20\d\d)\b/);
+  return m ? Number(m[1]) : null;
+};
+
+/** Section 20: each item is a bold lead-in, then the body. */
+export function scopeText(meta: Pick<ReportMeta, "buyerName" | "propertyAddress" | "unitNumber" | "strataPlan" | "ocrPages" | "professionallyReviewed" | "tier" | "totalPages">) {
+  const lot = [meta.unitNumber ? `unit ${meta.unitNumber}` : null, meta.propertyAddress, meta.strataPlan ? `strata plan ${meta.strataPlan}` : null]
+    .filter(Boolean)
+    .join(", ");
+  const check =
+    meta.tier === "expert" && meta.professionallyReviewed
+      ? `${founder.name} reviewed and verified the findings, the financial analysis and this report before delivery (section 21).`
+      : meta.professionallyReviewed
+        ? `Before delivery, ${founder.name} checked the key figures, special levies and Top Findings against their source pages (section 21). A Standard Review does not receive the full professional review of an Expert Review; you can upgrade with full credit for what you paid.`
+        : "This Standard report was produced by the Condo Wise Guys review process and was not checked by a person before delivery (section 21).";
+  return [
+    [
+      "Intended use and user",
+      `This report was prepared for ${meta.buyerName} to help them understand the strata documents for ${lot} before deciding on a purchase. They may share it with their lawyer, notary, realtor or lender, but no one else may rely on it, and it is not intended for lending, insurance or litigation.`,
+    ],
+    [
+      "Scope of work",
+      `We read all ${meta.totalPages} pages provided${meta.ocrPages ? `, including ${meta.ocrPages} scanned pages read by text recognition` : ""}, and reviewed them against the Condo Wise Guys BC strata checklist and the 20 red flags in our Condo Buyers Guide. AI software assisted with document extraction, analysis and drafting under the direction of ${founder.name}. Figures marked "derived" were calculated by our software from the cited figures, by the method shown. ${check}`,
+    ],
+    [
+      "Not included",
+      `We did not contact the strata corporation, its manager, its council or the seller, search title, audit the financial statements, or check the documents against any other source. ${reviewScope.full.join(" ")}`,
+    ],
+    [
+      "Assumptions",
+      "The documents are assumed to be authentic, accurate, complete and current. Information is as of each document's date; anything after the newest document, or outside the package, is not covered. Unit shares assume costs are shared by unit entitlement.",
+    ],
+    [
+      "Limiting conditions",
+      "Unit shares are illustrations only: the actual share depends on each levy resolution and, in a sectioned strata, on which section pays. Depreciation report figures are its author's projections, not decisions by owners, and no future cost is assured. Comments on bylaws, legal matters, building condition and insurance identify questions for a lawyer or notary, an inspector or engineer, or an insurance broker; they are not advice. This review does not recommend whether to buy.",
+    ],
+    [
+      "Corrections",
+      "Text recognition can misread figures. If you find a figure that doesn't match its cited page, tell us and we will correct the report at no charge.",
+    ],
+  ] as [string, string][];
+}
+
+/** The signed certification on a reviewed Expert report. */
+export function reviewerStatement() {
+  return [
+    "The statements of fact in this report are taken from the documents provided, and the source of each is cited.",
+    "The analysis and conclusions are my own impartial and unbiased professional analysis, limited only by the scope of work, assumptions and limiting conditions in section 20.",
+    "I have no present or prospective interest in this property and no personal interest in the parties.",
+    "My fee does not depend on the findings, on whether the purchase completes, or on any later event.",
+    "In the three years before this report I performed no services regarding this strata lot or its strata corporation, in any capacity.",
+    "I did not inspect the property.",
+    "AI software assisted with document extraction, analysis and drafting under my direction. I reviewed and verified the findings.",
+  ];
+}
+
+/** Draws the finished report as a PDF, in the 21 sections of the report standard. */
 export async function renderReportPdf(report: Report, segments: Segment[], meta: ReportMeta, cite: Cite) {
   const doc = await PDFDocument.create();
   doc.setTitle(`Strata Document Review: ${meta.propertyAddress}`);
@@ -323,190 +310,265 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
     return null;
   });
   const L = new Layout(doc, font, bold);
+  const today = new Date(meta.preparedOn.toLocaleString("en-US", { timeZone: "America/Vancouver" }));
+  const fig = report.figures;
+  const d = deriveMetrics(fig, today.getFullYear());
+  const reviewedExpert = meta.tier === "expert" && meta.professionallyReviewed;
+  const shareText =
+    fig.lot_entitlement && fig.total_entitlement
+      ? `unit entitlement ${fig.lot_entitlement.toLocaleString("en-CA")} of ${fig.total_entitlement.toLocaleString("en-CA")}`
+      : null;
+  const H_ = (n: number) => `${n}. ${SECTION_TITLES[n - 1]}`;
+  const none = (t: string) => L.text(t, { size: 9.5, color: MUTED, gap: 4 });
+  const numbered = (xs: string[]) => xs.forEach((t, i) => L.text(`${i + 1}. ${t}`, { x: M + 10, size: 9.5, gap: 2 }));
 
-  // ---- Cover band
+  // ---------------------------------------------------------------- Cover band
   L.newPage();
-  L.page.drawRectangle({ x: 0, y: H - 130, width: W, height: 130, color: NAVY });
-  if (logo) L.page.drawImage(logo, { x: M, y: H - 112, width: 84, height: 84 });
-  L.page.drawText("STRATA DOCUMENT REVIEW", { x: M + 102, y: H - 52, size: 10, font: bold, color: rgb(0.58, 0.77, 0.99) });
-  const titleLines = L.wrap(meta.propertyAddress, bold, 18, CONTENT_W - 102).slice(0, 2);
-  titleLines.forEach((t, i) => L.page.drawText(t, { x: M + 102, y: H - 76 - i * 22, size: 18, font: bold, color: rgb(1, 1, 1) }));
-  L.y = H - 150;
+  L.page.drawRectangle({ x: 0, y: H - 118, width: W, height: 118, color: NAVY });
+  if (logo) L.page.drawImage(logo, { x: M, y: H - 104, width: 76, height: 76 });
+  L.page.drawText("STRATA DOCUMENT REVIEW", { x: M + 94, y: H - 46, size: 9.5, font: bold, color: rgb(0.58, 0.77, 0.99) });
+  L.wrap(meta.propertyAddress, bold, 17, CONTENT_W - 94)
+    .slice(0, 2)
+    .forEach((t, i) => L.page.drawText(t, { x: M + 94, y: H - 68 - i * 21, size: 17, font: bold, color: rgb(1, 1, 1) }));
+  const sub = [
+    meta.unitNumber ? `Unit ${meta.unitNumber}` : null,
+    meta.strataPlan ? `Strata plan ${meta.strataPlan}` : null,
+    meta.tier === "expert" ? "Expert Review" : "Standard Review",
+    fmtDate(meta.preparedOn),
+  ]
+    .filter(Boolean)
+    .join("   |   ");
+  L.page.drawText(L.clean(sub, font), { x: M + 94, y: H - 104, size: 9, font, color: rgb(0.85, 0.9, 0.97) });
+  L.y = H - 128;
 
-  const facts = [
-    ["Prepared for", meta.buyerName],
-    ["Unit", meta.unitNumber || "Not given"],
-    ["Strata plan", meta.strataPlan || "Not given"],
-    ["Report", meta.tier === "expert" ? "Expert Reviewed" : "Standard"],
-    ["Date", fmtDate(meta.preparedOn)],
-    ["Package", `${meta.totalPages} pages in ${meta.fileCount} file${meta.fileCount === 1 ? "" : "s"}`],
-  ];
-  for (let i = 0; i < facts.length; i += 2) {
-    for (let k = 0; k < 2 && i + k < facts.length; k++) {
-      const [label, value] = facts[i + k];
-      const x = M + k * (CONTENT_W / 2);
-      L.page.drawText(label, { x, y: L.y - 9, size: 8, font: bold, color: MUTED });
-      L.page.drawText(L.clean(value, font).slice(0, 48), { x, y: L.y - 22, size: 10, font, color: TEXT });
-    }
-    L.y -= 32;
-  }
+  // ---------------------------------------------------------------- 1. Property description
+  L.heading(H_(1));
+  L.text(report.property_description, { size: 10, gap: 4 });
 
-  // ---- Rating and summary
-  L.y -= 6;
-  L.ensure(40);
-  L.page.drawText("Overall rating", { x: M, y: L.y - 12, size: 12, font: bold, color: NAVY });
-  const pw = L.pill(report.rating, M + 92, L.y - 1);
-  const hx = M + 100 + pw;
-  const headline = L.wrap(report.rating_headline, bold, 11, CONTENT_W - (hx - M)).slice(0, 3);
-  headline.forEach((t, i) => L.page.drawText(t, { x: hx, y: L.y - 11 - i * 14, size: 11, font: bold, color: TEXT }));
-  L.y -= 24 + (headline.length - 1) * 14;
-  L.text(
-    `Ratings use the traffic light method from our Condo Buyers Guide. Red: ${RISK_ACTION.red.toLowerCase()}. Amber: ${RISK_ACTION.amber.toLowerCase()}. Green: ${RISK_ACTION.green.toLowerCase()}.`,
-    { size: 8.5, color: MUTED, gap: 2 },
+  // ---------------------------------------------------------------- 2. Report information and overall assessment
+  L.heading(H_(2));
+  const ri = report.report_info;
+  L.table(
+    ["", ""],
+    [
+      ["Prepared for", meta.buyerName],
+      ["Review", `${meta.tier === "expert" ? "Expert Review" : "Standard Review"}, ${fmtDate(meta.preparedOn)}, order ${meta.orderId.slice(0, 8)}`],
+      ["Documents reviewed", `${meta.totalPages} pages in ${meta.fileCount} file${meta.fileCount === 1 ? "" : "s"} (section 19). Newest: ${ri.newest_document}, ${ri.newest_document_age}.`],
+      ["Depreciation report", ri.depreciation_report],
+      ["Management", ri.management],
+      ["Scope", "A review of the documents provided only (section 20)."],
+    ],
+    [130, CONTENT_W - 130],
   );
+  L.subheading("Overall assessment");
+  L.tagged(report.overall.statement, TAG[report.overall.rating], "", 68, 10.5, bold);
+  const areaName = { building: "Building and major projects", finances: "Finances and reserves", insurance_legal: "Insurance, legal and governance" } as const;
+  for (const area of ["building", "finances", "insurance_legal"] as const) {
+    const r = report.overall.areas.find((x) => x.area === area);
+    if (!r) continue;
+    L.tagged(`${areaName[area]}. ${r.why}${r.refs.length ? ` See section ${r.refs.join(", ")}.` : ""}`, TAG[r.rating], "", 68, 9.5);
+  }
+  L.text(`${RATING_LEGEND.red}  ${RATING_LEGEND.amber}  ${RATING_LEGEND.green}`, { size: 7.5, color: MUTED, gap: 4 });
+
+  // ---------------------------------------------------------------- 3. Executive summary
+  L.heading(H_(3));
+  report.executive_summary.forEach((p) => L.text(p, { size: 10.5, gap: 6 }));
+
+  // ---------------------------------------------------------------- 4. Before you remove subjects
+  L.heading(H_(4));
+  if (report.before_you_remove_subjects.length) numbered(report.before_you_remove_subjects.map((b) => `${b.action} ${b.why}${/[.!?]$/.test(b.why) ? "" : "."} (See section ${b.ref}.)`));
+  else none("The review did not identify specific actions beyond the purchaser's usual due diligence.");
+
+  // ---------------------------------------------------------------- 5. Top findings
+  L.heading(H_(5));
+  for (const f of byRating(report.top_findings)) {
+    L.tagged(f.title, TAG[f.rating], "", 68, 10, bold);
+    L.text(f.text, { x: M + 68, size: 9.5, gap: 1 });
+    L.text(`Source: ${cite(f.pages) || "see detail"}. More in section ${f.ref}.`, { x: M + 68, size: 8, color: MUTED, gap: 7 });
+  }
+
+  // ---------------------------------------------------------------- 6. Key numbers
+  L.heading(H_(6));
+  const kn: string[][] = [];
+  if (fig.monthly_fee) kn.push(["Strata fee for this lot", `${dollars2(fig.monthly_fee.amount)} a month`, `${fig.monthly_fee.as_of}; ${cite(fig.monthly_fee.pages)}`]);
+  if (shareText && d.share) kn.push(["Unit entitlement", `${fig.lot_entitlement} of ${fig.total_entitlement!.toLocaleString("en-CA")}`, `This lot pays ${pct(d.share)} of strata-wide costs [derived]`]);
+  if (fig.crf_balance) kn.push(["Contingency reserve fund (CRF)", money(fig.crf_balance.amount), `${fig.crf_balance.as_of}; ${cite(fig.crf_balance.pages)}`]);
+  if (d.crfPerLot != null) kn.push(["CRF per lot", aboutDollars(d.crfPerLot), `CRF divided by ${fig.lots_total} lots [derived]`]);
+  if (fig.annual_crf_contribution)
+    kn.push(["Annual CRF contribution", money(fig.annual_crf_contribution.amount), `${fig.annual_crf_contribution.as_of}; ${cite(fig.annual_crf_contribution.pages)}`]);
+  if (fig.recommended_contribution)
+    kn.push([`Contribution, "${fig.recommended_contribution.scenario}" scenario`, money(fig.recommended_contribution.amount), `Depreciation report, first year; ${cite(fig.recommended_contribution.pages)}`]);
+  if (d.forecast3yr) kn.push([`Forecast spending, ${d.forecast3yr.from} to ${d.forecast3yr.to}`, money(d.forecast3yr.amount), `Depreciation report; ${cite(d.forecast3yr.pages)}`]);
+  if (d.coverage3yr != null) kn.push(["CRF against the next 3 years' forecast", pct(d.coverage3yr), "CRF divided by 3-year forecast [derived]"]);
+  if (d.forecast10yrPerLot != null) kn.push(["10-year forecast spending per lot", aboutDollars(d.forecast10yrPerLot), `${money(d.forecast10yr ?? 0)} divided by ${fig.lots_total} lots [derived]`]);
+  if (fig.operating_result)
+    kn.push([`Operating ${fig.operating_result.amount < 0 ? "deficit" : "surplus"}`, money(Math.abs(fig.operating_result.amount)), `${fig.operating_result.period}; ${cite(fig.operating_result.pages)}`]);
+  if (fig.water_deductible) kn.push(["Water damage deductible", money(fig.water_deductible.amount), `${fig.water_deductible.as_of}; ${cite(fig.water_deductible.pages)}`]);
+  report.key_numbers_other.slice(0, 6).forEach((k) => kn.push([k.label, k.value, cite(k.pages)]));
+  if (kn.length) L.table(["Measure", "Amount", "Source or basis"], kn, [190, 110, CONTENT_W - 300]);
+  else none("The documents provided did not give the key financial figures; see section 16.");
+
+  // ---------------------------------------------------------------- 7. Special levies
+  L.heading(H_(7));
+  const levyRows = report.levies.map((l) => ({ ...l, total: parseDollars(l.strata_total), year: firstYear(l.period) }));
+  if (levyRows.length)
+    L.table(
+      ["Period", "Status", "Whole strata", "This lot (illustration)", "Source"],
+      levyRows.map((l) => [
+        l.period + (l.note ? `. ${l.note}` : ""),
+        LEVY_STATUS[l.status],
+        l.strata_total,
+        l.total != null && d.share ? aboutDollars(l.total * d.share) : "unknown",
+        cite(l.pages),
+      ]),
+      [150, 62, 88, 100, CONTENT_W - 400],
+    );
+  L.text(report.levy_comment, { size: 10, gap: 4 });
+  const forecastSoon = levyRows.filter((l) => l.status === "forecast" && l.total != null && l.year != null && l.year >= today.getFullYear() && l.year <= today.getFullYear() + 2);
+  const forecastSoonTotal = forecastSoon.reduce((a, l) => a + (l.total ?? 0), 0);
+  const coo: string[][] = [];
+  if (fig.monthly_fee && (forecastSoon.length || d.feeIfRecommended != null)) {
+    if (forecastSoon.length)
+      coo.push([
+        "Current funding continues",
+        `About ${dollars2(fig.monthly_fee.amount)}, plus annual increases`,
+        d.share ? `${aboutDollars(forecastSoonTotal * d.share)} (forecast, not approved)` : `${money(forecastSoonTotal)} strata-wide`,
+        "Depreciation report current-funding model [derived]",
+      ]);
+    if (d.feeIfRecommended != null && fig.recommended_contribution)
+      coo.push([
+        `"${fig.recommended_contribution.scenario}" funding adopted`,
+        `${aboutDollars(d.feeIfRecommended)} a month`,
+        "Lower; see section 11",
+        `The CRF part of the fee goes from ${dollars2(d.lotMonthlyCrfNow ?? 0)} to ${aboutDollars(d.lotMonthlyCrfRecommended ?? 0)} [derived]`,
+      ]);
+    L.text(`What it could mean for this lot, ${today.getFullYear()} to ${today.getFullYear() + 2}`, { size: 9.5, font: bold, color: NAVY, gap: 2 });
+    L.table(["If", "Monthly fee", "Levies", "Basis"], coo, [120, 120, 120, CONTENT_W - 360]);
+  }
   L.text(
-    "This is a review of the strata documents provided. It is not an appraisal (no opinion of value is given), a building inspection or a legal opinion. Its scope, assumptions and limits are set out in \"Scope of work\" near the end.",
-    { size: 8.5, color: MUTED, gap: 2 },
+    [
+      shareText ? `Shares use this lot's ${shareText}.` : "This lot's unit entitlement was not found, so its share can't be estimated; ask for the Schedule of Unit Entitlement.",
+      "Illustrations only: the actual split depends on each levy resolution. Forecast levies are projections in the depreciation report, not decisions by owners.",
+    ].join(" "),
+    { size: 8.5, color: MUTED, gap: 6 },
   );
-  L.heading("Executive summary");
-  L.text(report.summary, { size: 10.5, gap: 8 });
-  if (report.priorities?.length) {
-    L.subheading("Before you remove subjects");
-    report.priorities.forEach((p, i) => L.text(`${i + 1}. ${p}`, { x: M + 12, gap: 3 }));
-    L.y -= 6;
-  }
-  L.subheading("Top findings");
-  report.top_findings.forEach((f) => L.item(f.text, f.risk, cite(f.pages)));
 
-  // ---- Key numbers
-  if (report.key_numbers.length) {
-    L.heading("Key numbers");
+  // ---------------------------------------------------------------- 8. Form B
+  L.heading(H_(8));
+  if (report.form_b.length)
     L.table(
-      ["Item", "Amount or detail", "Source"],
-      report.key_numbers.map((k) => [k.label, k.value, cite(k.pages)]),
-      [170, 220, CONTENT_W - 390],
+      ["Item", "Answer", "Rating", "Source"],
+      byRating(report.form_b).map((f) => [f.item, f.answer, TAG[f.rating].label, cite(f.pages)]),
+      [130, 250, 50, CONTENT_W - 430],
     );
-  }
+  else none("No Form B Information Certificate was found in the documents provided. A current Form B is listed in section 16.");
 
-  // ---- Levies
-  if (report.levies && report.levies.rows.length) {
-    L.heading("Special levies: approved, proposed and forecast");
-    L.table(
-      ["Period", "Status", "Whole strata", "Estimated share for this unit", "Source"],
-      report.levies.rows.map((r) => [r.period, r.status, r.strata_total, r.unit_share, cite(r.pages)]),
-      [150, 58, 92, 124, CONTENT_W - 424],
-    );
-    L.text(report.levies.basis, { size: 8.5, color: MUTED, gap: 6 });
-  }
+  // ---------------------------------------------------------------- 9. Red flag check
+  L.heading(H_(9));
+  L.text("The 20 red flags from our Condo Buyers Guide, checked against the documents provided. RED: present; AMBER: partly present or a question to settle; GREEN: not shown in the documents reviewed.", {
+    size: 8.5,
+    color: MUTED,
+    gap: 4,
+  });
+  const flagLabel = { present: "RED", partly: "AMBER", not_shown: "GREEN", not_checked: "Not checked" } as const;
+  L.table(
+    ["#", "Red flag", "Result", "See"],
+    TOP_RED_FLAGS.map((flag, i) => {
+      const r = report.red_flags.find((x) => x.n === i + 1);
+      return [String(i + 1), flag, r ? `${flagLabel[r.status]}${r.note ? `: ${r.note}` : ""}` : "Not checked", r?.ref ?? ""];
+    }),
+    [20, 200, CONTENT_W - 260, 40],
+  );
 
-  // ---- Form B
-  L.heading("Form B, line by line");
-  if (report.form_b.length) {
-    report.form_b.forEach((f) => L.item(`${f.item}: ${f.answer}`, f.risk, cite(f.pages)));
-  } else {
-    L.text("No Form B Information Certificate was found in the package. Ask the seller for a current Form B before removing subjects.", { gap: 6 });
-  }
-
-  // ---- The guide's Top 20 Red Flags
-  if (report.red_flags?.length) {
-    // Report only the flags the documents provided let us assess. A flag we couldn't assess is
-    // not evidence that anything is missing: the client's documents may simply be named or
-    // organized differently, so we say nothing about it beyond a count.
-    const assessed = TOP_RED_FLAGS.flatMap((flag, i) => {
-      const row = report.red_flags.find((r) => r.n === i + 1);
-      return row && row.status !== "not_checked" ? [{ flag, n: i + 1, row, status: row.status }] : [];
-    });
-    if (assessed.length) {
-      L.heading("Red flag check: the Condo Buyers Guide's Top 20");
-      L.text(
-        "We checked the documents provided against the 20 red flags in our Condo Buyers Guide (Part 12.2). Red means the flag is present, amber means it is partly present or needs an answer, and green means the documents we reviewed do not show it.",
-        { size: 9.5, color: MUTED, gap: 6 },
-      );
-      for (const { flag, n, row, status } of assessed) L.item(`${n}. ${flag}. ${row.note}`, status, row.pages.length ? cite(row.pages) : "", 70);
-      const rest = TOP_RED_FLAGS.length - assessed.length;
-      if (rest)
-        L.text(`The other ${rest} red flag${rest === 1 ? "" : "s"} could not be assessed from the documents provided.`, {
-          size: 9,
-          color: MUTED,
-          gap: 6,
-        });
-    }
-  }
-
-  // ---- Sections
-  for (const id of SECTION_IDS) {
-    const s = report.sections.find((x) => x.id === id);
-    L.heading(SECTION_TITLES[id]);
+  // ---------------------------------------------------------------- 10 to 15. Analysis
+  for (const id of ANALYSIS_IDS) {
+    const n = analysisSection(id);
+    const s = report.analysis.find((x) => x.id === id);
+    L.heading(H_(n));
     if (!s) {
-      L.text("The documents provided did not cover this area.", { color: MUTED, gap: 6 });
+      none("The documents provided did not cover this area; see section 16.");
       continue;
     }
-    L.text(s.intro, { gap: 6 });
-    s.items.forEach((it) => L.item(it.text, it.risk, cite(it.pages)));
+    L.text(`Reviewed: ${s.reviewed}`, { size: 8.5, color: MUTED, gap: 3 });
+    L.text(s.conclusion, { size: 10, gap: 5 });
+    if (id === "financial") {
+      L.text(report.financial_interpretation, { size: 10, gap: 5 });
+      if (fig.fee_history.length > 1)
+        L.table(["Year", "This lot's monthly fee", "Source"], fig.fee_history.map((h) => [h.year, dollars2(h.monthly_fee), cite(h.pages)]), [120, 160, CONTENT_W - 280]);
+    }
+    if (id === "minutes" && report.issues.length) {
+      L.text("Recurring and unresolved matters", { size: 9.5, font: bold, color: NAVY, gap: 2 });
+      const status = { open: "Open", in_progress: "In progress", resolved: "Resolved", unknown: "Unknown" } as const;
+      L.table(
+        ["Matter", "First", "Last", "Status", "Cost", "Source"],
+        report.issues.slice(0, 10).map((x) => [x.issue, x.first_recorded, x.last_recorded, `${status[x.status]}: ${x.status_note}`, x.cost ?? "Not stated", cite(x.pages)]),
+        [118, 52, 52, 140, 60, CONTENT_W - 422],
+      );
+    }
+    byRating(s.items).forEach((it) => L.tagged(it.text + (it.evidence === "interpretation" ? " (Our analysis.)" : ""), TAG[it.rating], cite(it.pages)));
+    if (id === "other" && report.conflicts.length) {
+      L.text("Where the documents disagree", { size: 9.5, font: bold, color: NAVY, gap: 2 });
+      report.conflicts.forEach((c) => L.bullet(c.what, cite(c.pages)));
+    }
   }
 
-  // ---- Missing documents
-  L.heading("Documents to ask for");
-  if (report.missing_documents.length) {
-    L.text(
-      "We did not find these in the documents provided, or the version provided is out of date. They may exist under another name; if you have them, check them before removing subjects.",
-      { size: 9.5, color: MUTED, gap: 6 },
-    );
-    report.missing_documents.forEach((m) => L.item(`${m.document}. ${m.why_it_matters}`, "amber", ""));
-  } else {
-    L.text("The documents provided cover the items we normally review.", { gap: 6 });
-  }
+  // ---------------------------------------------------------------- 16. Documents to ask for
+  L.heading(H_(16));
+  if (report.documents_to_request.length) {
+    L.text("Not found in the documents provided. A missing document does not mean there is a problem; these would help confirm the matters above.", { size: 8.5, color: MUTED, gap: 3 });
+    numbered(report.documents_to_request.slice(0, 8).map((m) => `${m.document}: ${m.why}`));
+  } else none("The documents provided cover the items normally reviewed.");
 
-  // ---- Questions
-  L.heading("Questions to ask before removing subjects");
-  report.questions.forEach((q, i) => L.text(`${i + 1}. ${q}`, { gap: 4 }));
+  // ---------------------------------------------------------------- 17. Questions
+  L.heading(H_(17));
+  if (report.questions.length) numbered(report.questions.slice(0, 10));
+  else none("The review raised no follow-up questions beyond section 4.");
 
-  // ---- Related services (same owner, disclosed)
-  L.heading("Related services from our sister company");
-  L.text(
-    `Condo Wise Guys and ${sisterCompany.name} are both owned by ${sisterCompany.owner}. We mention these services because they relate to what this review found. You are under no obligation to use them.`,
-    { size: 9.5, color: MUTED, gap: 6 },
-  );
-  relatedServiceNotes(report.service_signals).forEach((n) => L.item(n, null, ""));
-  drawLink(L, "dreamhomegroup.ca", sisterLink("report"));
-  L.y -= 4;
+  // ---------------------------------------------------------------- 18. Related services
+  L.heading(H_(18));
+  const services = relatedServiceNotes(report.service_signals);
+  if (services.length) {
+    services.forEach((t) => L.bullet(t, ""));
+  } else none("No related services are indicated by this review.");
 
-  // ---- Documents reviewed
-  L.heading("Documents reviewed");
+  // ---------------------------------------------------------------- 19. Documents reviewed
+  L.heading(H_(19));
+  const dup = segments.filter((s) => /duplicate/i.test(s.title));
+  const main = segments.filter((s) => !/duplicate/i.test(s.title) && (s.type !== "other" || s.end - s.start >= 2));
+  const span = (s: Segment) => Array.from({ length: s.end - s.start + 1 }, (_, i) => s.start + i);
   L.table(
     ["Pages", "Document", "Type"],
-    segments
-      .filter((s) => s.type !== "other" || s.end - s.start >= 2)
-      .map((s) => [cite(Array.from({ length: s.end - s.start + 1 }, (_, i) => s.start + i)), `${s.title}${s.superseded ? " (older version)" : ""}`, DOC_TYPE_LABEL[s.type]]),
+    main.map((s) => [cite(span(s)), `${s.title}${s.superseded ? " (older version)" : ""}`, DOC_TYPE_LABEL[s.type]]),
     [110, 270, CONTENT_W - 380],
   );
+  if (dup.length) L.text(`Duplicate copies, reviewed once: ${cite(dup.flatMap(span), 8)}.`, { size: 8.5, color: MUTED, gap: 6 });
 
-  // ---- Scope of work, assumptions and certification
-  const scope = scopeOfWork(meta);
-  L.heading("Scope of work");
-  for (const [label, body] of scope.terms) {
+  // ---------------------------------------------------------------- 20. Scope
+  L.heading(H_(20));
+  for (const [label, body] of scopeText(meta)) {
     L.text(label, { size: 9.5, font: bold, color: NAVY, gap: 1 });
     L.text(body, { size: 9, gap: 5 });
   }
-  L.subheading("Assumptions and limiting conditions");
-  scope.conditions.forEach((c, i) => L.text(`${i + 1}. ${c}`, { size: 9, x: M + 12, gap: 3 }));
-  L.y -= 4;
-  if (scope.certification) {
-    // Keep the certification and the signature together on one page.
-    const certLines = scope.certification.reduce((n, c) => n + L.wrap(`- ${c}`, font, 9, CONTENT_W - 12).length, 0);
-    L.ensure(certLines * 9 * 1.38 + scope.certification.length * 3 + 200);
-    L.heading("Certification");
-    L.text("I certify that, to the best of my knowledge and belief:", { size: 9.5, gap: 3 });
-    scope.certification.forEach((c) => L.text(`- ${c}`, { size: 9, x: M + 12, gap: 3 }));
+
+  // ---------------------------------------------------------------- 21. Certification
+  const statement = reviewedExpert ? reviewerStatement() : [];
+  const lines = statement.reduce((n, c) => n + L.wrap(`- ${c}`, font, 9, CONTENT_W - 12).length, 0);
+  L.ensure(lines * 9 * 1.38 + statement.length * 3 + 200);
+  L.heading(H_(21));
+  if (reviewedExpert) {
+    L.text("I reviewed this report, its findings and its financial analysis before it was delivered, and I take professional responsibility for it. To the best of my knowledge and belief:", {
+      size: 9.5,
+      gap: 3,
+    });
+    statement.forEach((c) => L.text(`- ${c}`, { size: 9, x: M + 12, gap: 3 }));
     L.y -= 8;
     // A signature that can't be embedded must never stop a report; the typed name stays.
-    const sig =
-      meta.professionallyReviewed && meta.signaturePng
-        ? await doc.embedPng(new Uint8Array(meta.signaturePng)).catch((err) => {
-            console.error("signature could not be embedded", err);
-            return null;
-          })
-        : null;
+    const sig = meta.signaturePng
+      ? await doc.embedPng(new Uint8Array(meta.signaturePng)).catch((err) => {
+          console.error("signature could not be embedded", err);
+          return null;
+        })
+      : null;
     if (sig) {
       const h = 40;
       const w = Math.min((sig.width / sig.height) * h, 200);
@@ -514,20 +576,26 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
       L.y -= h + 4;
     }
     L.text(founder.name, { size: 10.5, font: bold, color: NAVY });
-    L.text(founder.designations, { size: 9 });
-    L.text(`Report date: ${fmtDate(meta.preparedOn)}. Signed on my approval for delivery; this report is not sent until I approve it.`, {
-      size: 8.5,
-      color: MUTED,
-      gap: 6,
-    });
+    L.text("B.Comm., CRP (Real Estate Institute of Canada), DRP and DAR (Canadian National Association of Real Estate Appraisers)", { size: 9 });
+    L.text(`Report date: ${fmtDate(meta.preparedOn)}.`, { size: 8.5, color: MUTED, gap: 6 });
+  } else if (meta.professionallyReviewed) {
+    L.text(
+      `Before delivery, ${founder.name} checked the key figures, special levies and Top Findings in this report against their source pages. A Standard Review does not receive the full professional review and signed certification of an Expert Review.`,
+      { size: 9.5, gap: 3 },
+    );
+    L.text(`${founder.name}, ${founder.designations}. Report date: ${fmtDate(meta.preparedOn)}.`, { size: 9, gap: 6 });
+  } else {
+    L.text(
+      "This Standard report was produced by the Condo Wise Guys review process and was not checked by a person before delivery, so it carries no professional certification. An Expert Review includes a full review and signed certification.",
+      { size: 9.5, gap: 6 },
+    );
   }
 
-  L.heading("About Condo Wise Guys");
+  L.y -= 6;
   L.text(
-    `Condo Wise Guys is owned by ${founder.name}, ${founder.designations}: ${founder.summary.charAt(0).toLowerCase()}${founder.summary.slice(1)} Read more at condowiseguys.com/about.`,
-    { size: 9, color: MUTED, gap: 6 },
+    `Condo Wise Guys is owned by ${founder.name}, ${founder.designations}: ${founder.summary.charAt(0).toLowerCase()}${founder.summary.slice(1)} Questions about this report: ${meta.contactEmail}. Order reference ${meta.orderId.slice(0, 8)}.`,
+    { size: 8.5, color: MUTED },
   );
-  L.text(`Questions about this report: ${meta.contactEmail}. Order reference ${meta.orderId.slice(0, 8)}.`, { size: 9, color: MUTED });
 
   // ---- Footers
   const pages = doc.getPages();
@@ -537,6 +605,7 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
     p.drawText(left, { x: M, y: 28, size: 8, font, color: MUTED });
     const right = `Page ${i + 1} of ${pages.length}`;
     p.drawText(right, { x: W - M - font.widthOfTextAtSize(right, 8), y: 28, size: 8, font, color: MUTED });
+    p.drawText(L.clean(reviewScope.line, font), { x: M, y: 17, size: 7, font, color: MUTED });
   });
 
   return doc.save();
