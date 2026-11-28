@@ -287,6 +287,8 @@ The report must accurately reflect the scope of the assignment and the work actu
 
 Do not imply that a physical inspection, legal review, audit, independent verification or valuation was performed when it was not.
 
+Make no reference to valuation. The report must not give or imply an opinion of the unit's value or price, comment on how a finding affects value or price, or suggest a market value appraisal of the unit. The only exception is the scope statement that the review is not an appraisal. (Added by Brian A. Hill, November 28, 2026.)
+
 AI may assist with document extraction, analysis and drafting, but findings must be reviewed and verified by the responsible professional.
 
 Maintain appropriate independence, objectivity and professional judgment.

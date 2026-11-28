@@ -254,7 +254,7 @@ export function scopeText(meta: Pick<ReportMeta, "buyerName" | "propertyAddress"
   return [
     [
       "Intended use and user",
-      `This report was prepared for ${meta.buyerName} to help them understand the strata documents for ${lot} before deciding on a purchase. They may share it with their lawyer, notary, realtor or lender, but no one else may rely on it, and it is not intended for lending, valuation, insurance or litigation.`,
+      `This report was prepared for ${meta.buyerName} to help them understand the strata documents for ${lot} before deciding on a purchase. They may share it with their lawyer, notary, realtor or lender, but no one else may rely on it, and it is not intended for lending, insurance or litigation.`,
     ],
     [
       "Scope of work",
@@ -270,7 +270,7 @@ export function scopeText(meta: Pick<ReportMeta, "buyerName" | "propertyAddress"
     ],
     [
       "Limiting conditions",
-      "Unit shares are illustrations only: the actual share depends on each levy resolution and, in a sectioned strata, on which section pays. Depreciation report figures are its author's projections, not decisions by owners, and no future cost is assured. Comments on bylaws, legal matters, building condition and insurance identify questions for a lawyer or notary, an inspector or engineer, or an insurance broker; they are not advice. This review does not recommend whether to buy, and no opinion of value is given.",
+      "Unit shares are illustrations only: the actual share depends on each levy resolution and, in a sectioned strata, on which section pays. Depreciation report figures are its author's projections, not decisions by owners, and no future cost is assured. Comments on bylaws, legal matters, building condition and insurance identify questions for a lawyer or notary, an inspector or engineer, or an insurance broker; they are not advice. This review does not recommend whether to buy.",
     ],
     [
       "Corrections",
@@ -405,7 +405,7 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
     kn.push([`Operating ${fig.operating_result.amount < 0 ? "deficit" : "surplus"}`, money(Math.abs(fig.operating_result.amount)), `${fig.operating_result.period}; ${cite(fig.operating_result.pages)}`]);
   if (fig.water_deductible) kn.push(["Water damage deductible", money(fig.water_deductible.amount), `${fig.water_deductible.as_of}; ${cite(fig.water_deductible.pages)}`]);
   report.key_numbers_other.slice(0, 6).forEach((k) => kn.push([k.label, k.value, cite(k.pages)]));
-  if (kn.length) L.table(["Measure", "Value", "Source or basis"], kn, [190, 110, CONTENT_W - 300]);
+  if (kn.length) L.table(["Measure", "Amount", "Source or basis"], kn, [190, 110, CONTENT_W - 300]);
   else none("The documents provided did not give the key financial figures; see section 16.");
 
   // ---------------------------------------------------------------- 7. Special levies
@@ -581,7 +581,7 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
     }
     L.text(founder.name, { size: 10.5, font: bold, color: NAVY });
     L.text("B.Comm., CRP (Real Estate Institute of Canada), DRP and DAR (Canadian National Association of Real Estate Appraisers)", { size: 9 });
-    L.text(`Report date: ${fmtDate(meta.preparedOn)}. This review is not an appraisal, and no opinion of value is given.`, { size: 8.5, color: MUTED, gap: 6 });
+    L.text(`Report date: ${fmtDate(meta.preparedOn)}.`, { size: 8.5, color: MUTED, gap: 6 });
   } else if (meta.professionallyReviewed) {
     L.text(
       `Before delivery, ${founder.name} checked the key figures, special levies and Top Findings in this report against their source pages. A Standard Review does not receive the full professional review and signed certification of an Expert Review.`,
