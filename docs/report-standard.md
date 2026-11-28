@@ -289,6 +289,8 @@ Do not imply that a physical inspection, legal review, audit, independent verifi
 
 Make no reference to valuation. The report must not give or imply an opinion of the unit's value or price, comment on how a finding affects value or price, or suggest a market value appraisal of the unit. The only exception is the scope statement that the review is not an appraisal. (Added by Brian A. Hill, November 28, 2026.)
 
+No sales pitch. The report must not promote or name any service provider, including Condo Wise Guys or its related businesses. Related Services, Where Relevant states neutrally what further professional work the findings suggest (for example, that an updated depreciation report may be advisable), without naming a provider. (Added by Brian A. Hill, November 28, 2026.)
+
 AI may assist with document extraction, analysis and drafting, but findings must be reviewed and verified by the responsible professional.
 
 Maintain appropriate independence, objectivity and professional judgment.

@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
-import { founder, reviewScope, sisterCompany } from "@/lib/site";
+import { founder, reviewScope } from "@/lib/site";
 import { DOC_TYPE_LABEL, TOP_RED_FLAGS } from "./checklist";
 import type { Segment } from "./classify";
 import { ANALYSIS_IDS, SECTION_TITLES, analysisSection, byRating, type Report } from "./compose";
@@ -529,10 +529,6 @@ export async function renderReportPdf(report: Report, segments: Segment[], meta:
   const services = relatedServiceNotes(report.service_signals);
   if (services.length) {
     services.forEach((t) => L.bullet(t, ""));
-    L.text(
-      `${sisterCompany.shortName} is owned by ${founder.name}, who directs this review. It is mentioned only because a finding above calls for the service; any qualified provider can do the work.`,
-      { size: 8.5, color: MUTED, gap: 4 },
-    );
   } else none("No related services are indicated by this review.");
 
   // ---------------------------------------------------------------- 19. Documents reviewed
