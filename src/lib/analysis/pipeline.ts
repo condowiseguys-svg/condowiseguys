@@ -179,6 +179,7 @@ export async function routeDraft(
   rating: string,
   missing: string[],
   pagesToCheck: { scanned: string; unreadable: string } = { scanned: "", unreadable: "" },
+  qcProblems: string[] = [],
 ): Promise<{ status: string; approvedVersionId: string | null }> {
   const order = await loadOrder(orderId);
   if (order.status !== "processing") return { status: order.status, approvedVersionId: null };
@@ -207,18 +208,24 @@ export async function routeDraft(
       html: emailHtml(
         [
           `The draft report for <strong>${escapeHtml(order.property_address)}</strong> (${order.tier === "expert" ? "Expert Reviewed" : "Standard"}) is ready.`,
-          `Overall rating: <strong>${escapeHtml(rating)}</strong>.${
+          `Risk profile: <strong>${escapeHtml(rating)}</strong>.${
             missing.length ? ` Not found in the package: ${missing.map(escapeHtml).join(", ")}.` : ""
           }`,
+          ...(qcProblems.length
+            ? [`<strong>Automated checks still flag:</strong><br>${qcProblems.map((p) => `&bull; ${escapeHtml(p)}`).join("<br>")}`]
+            : []),
+          order.tier === "expert"
+            ? "Expert review: confirm the priorities, the financial interpretation and the summary, then approve to sign."
+            : "Standard release check (10 to 15 minutes): page 1 and the key numbers against their source pages.",
           "Before approving, please check by hand:",
-          `&bull; every top finding against the page it cites;<br>&bull; the scanned pages, which were read by text recognition: ${escapeHtml(
+          `&bull; every key finding and the cost exposure figures against the pages they cite;<br>&bull; the scanned pages, which were read by text recognition: ${escapeHtml(
             pagesToCheck.scanned || "none",
           )}${pagesToCheck.unreadable ? `;<br>&bull; <strong>pages that could not be read at all: ${escapeHtml(pagesToCheck.unreadable)}</strong>` : ""}.`,
           "Then approve and send it, write a new draft, or ask the buyer for more documents.",
         ],
         { href: link, label: "Open the order" },
       ),
-      text: `The draft report for ${order.property_address} is ready. Rating: ${rating}.\nCheck the top findings against their pages, and the scanned pages: ${
+      text: `The draft report for ${order.property_address} is ready. Risk profile: ${rating}.${qcProblems.length ? `\nAutomated checks still flag: ${qcProblems.join("; ")}` : ""}\nCheck the top findings against their pages, and the scanned pages: ${
         pagesToCheck.scanned || "none"
       }${pagesToCheck.unreadable ? `\nCould not be read: ${pagesToCheck.unreadable}` : ""}\n${link}\n`,
     });

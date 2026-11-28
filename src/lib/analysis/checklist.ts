@@ -58,18 +58,22 @@ export const SATISFIES: Partial<Record<DocType, PackageItemId>> = {
 };
 
 /**
- * The traffic light method from the Condo Buyers Guide (Part 12.1). Every rating in the
- * review uses these words, so a buyer who read the guide recognizes them in the report.
+ * How every finding is prioritized. Dollar thresholds give the writer a testable rule, so
+ * ordinary items stay routine instead of drifting to "moderate". Priorities describe how much
+ * a finding matters; they never tell the buyer what to do (no purchase advice).
  */
-export const RISK_METHOD = `Rate every finding with the traffic light method from the Condo Wise Guys Condo Buyers Guide:
-- red, "stop and think hard": findings that can cost tens of thousands of dollars per unit, or make the home unsuitable for this buyer. Examples: unremediated envelope failure; a large special levy being discussed or approved with payments after completion; major work forecast with a contingency reserve fund (CRF) far short of it; a lawsuit with large exposure; a deductible the buyer is unlikely to be able to insure; a bylaw that rules out how the buyer plans to live.
-- amber, "negotiate or protect yourself": findings with a cost the buyer can estimate, or a question that must be answered before removing subjects. Examples: a roof due in a few years with a partly funded reserve; fee increases forecast in the budget; a plumbing replacement plan in its early stages; a missing document.
-- green, "note and budget": ordinary maintenance and normal aging of a well-funded building, and reassuring findings. Examples: routine repairs, small rule disputes, planned painting paid from the CRF, no levies approved, healthy reserves.`;
+export const PRIORITY_METHOD = `Give every finding a priority by how much it could matter to a buyer of this unit:
+- high: a documented issue with a plausible cost to this lot of more than about $10,000 (estimate the lot's share by unit entitlement where you can); or a legal, insurance or ownership matter that could change whether the home suits the buyer (for example a large deductible that can be charged to the owner, an open lawsuit with material exposure, insurer conditions for renewal); or major work forecast with reserves far short of it.
+- moderate: a plausible cost to this lot of about $2,000 to $10,000; a trend worth monitoring (rising fees, repeated overruns, recurring but contained leaks); or a material question the documents can't answer (a missing document that sets the scope or cost of upcoming work).
+- routine: everything else: normal maintenance and repairs, administration, small disputes, rules, and reassuring findings. Routine is the normal case; most items in most packages are routine.
+Do not inflate. Pest control, move-in fees, gym rules, quiet hours and similar items are routine. Lifestyle bylaws and rules (pets, smoking, rentals, business use, renovations needing approval) are not risks: report them as facts to check against the buyer's plans, rated routine, unless the buyer's notes say they conflict with how the buyer plans to live (then high) or the bylaw shifts costs to owners (deductible chargebacks, owner repair responsibility for windows, doors, balconies or pipes: rate by exposure).
+Tag each finding's evidence: "documented" when a document states it, "interpretation" when it is your professional reading of what documented facts suggest. Word interpretations as such ("this suggests", "this is consistent with"), never as fact.`;
 
-export const RISK_ACTION: Record<"red" | "amber" | "green", string> = {
-  red: "Stop and think hard",
-  amber: "Negotiate or protect yourself",
-  green: "Note and budget",
+/** Labels used in the PDF. */
+export const PRIORITY_LABEL: Record<"high" | "moderate" | "routine", string> = {
+  high: "High",
+  moderate: "Moderate",
+  routine: "Routine",
 };
 
 /** The Top 20 Red Flags from the Condo Buyers Guide (Part 12.2), in the guide's order. Every report checks each one. */
@@ -165,6 +169,7 @@ export const REVIEW_GROUPS: ReviewGroup[] = [
 - Note the date range the minutes cover and any months that appear to be missing.
 - Search for the buyers guide keywords (Appendix C): leak, water ingress, moisture, mould, flood, sump, backup; envelope, rainscreen, stucco, sealant, membrane, balcony, crack, spalling, rebar, settlement; roof, boiler, elevator, riser, Poly-B, Kitec, galvanized, pinhole, panel, fire alarm, sprinkler; special levy, loan, borrow, shortfall, deficit, arrears; claim, deductible, renewal, premium, appraisal; lawsuit, lawyer, CRT, tribunal, arbitration, lien, demand letter; complaint, harassment, noise, smoking, cannabis, Airbnb, short-term, fine; engineer, assessment, quote, tender, warranty.
 - General meetings: resolutions that failed (especially a failed special levy or 3/4 vote on a major repair), whether owners approved the CRF contribution the depreciation report recommended or cut it, close or contested votes, owners' questions in new business, and meetings that failed to reach quorum.
+- Track recurring issues across meetings: for each issue that appears in more than one meeting (a leak area, a project, a failing system, a dispute), record when it was first and last recorded, how many meetings mention it, its status at the last record (open, in progress, resolved or unknown), any cost given, and the pages. These go in the issues list, not as separate findings per meeting.
 - List every engineering, consultant or condition report the minutes refer to (envelope, structural, roofing, elevator, mechanical, electrical, plumbing), with its date and subject, so the report can say whether it was provided.
 - Red flags from the buyers guide (Part 7.5), each to be reported if present: repeated water ingress reports from different units; any engineering investigation of the envelope, balconies, parkade, plumbing or structure; a special levy or loan being discussed, drafted or "brought to owners"; a failed 3/4 vote on a major repair; insurance claims, especially repeated water claims, or insurer warnings about renewal; a sharp increase in premiums or deductibles; legal advice sought, demand letters, CRT claims or lawsuits; frequent turnover of council members or strata managers; unresolved conflict between council and owners, or between neighbours; gaps in the minutes, or minutes so brief they reveal nothing.`,
   },
@@ -183,6 +188,7 @@ export const REVIEW_GROUPS: ReviewGroup[] = [
 - Repair and maintenance responsibility: which parts of the building (windows, doors, balcony membranes, pipes) the bylaws make owners responsible for.
 - Noise and quiet hours, occupancy limits, move-in fees, and fine amounts.
 - Whether council rules have been ratified at a general meeting.
+- Pets, smoking, rentals, business use and renovation approvals are facts for the buyer to check against their plans: report them as routine findings unless the buyer's notes conflict with them or they shift costs to owners.
 - Red flags from the buyers guide (Part 9.4), each to be reported if present: a bylaw that conflicts with the buyer's stated plans (pets, renovations, home business, short-term rental income); bylaw amendments passed but not filed, or proposed for the next AGM; frequent fines or bylaw disputes; bylaws placing unusually broad repair or insurance responsibility on owners (windows, balcony membranes, pipes serving other units); outdated rental or age bylaws that the strata still tries to enforce.`,
   },
   {
@@ -217,6 +223,7 @@ export const REVIEW_GROUPS: ReviewGroup[] = [
     checks: `- Court or CRT actions, liens, judgments, or claims involving the strata or this unit: file numbers, parties, status, and whether the minutes record how they ended.
 - Notices from the strata, the city, the fire department, or WorkSafeBC; work orders.
 - Anything else a buyer should know before removing subjects.
+- Okanagan and BC Interior matters, where the documents touch on them: short-term rental use (the provincial principal residence requirement applies unless the municipality has opted out for that zone or address; Kelowna exempts only listed short-term rental subzone properties from June 1, 2026), rental pool, hotel or resort management agreements, wildfire or flood risk, evacuation or smoke damage, insurer comments on wildfire, and the timing of the insurance renewal; for bare land stratas, who owns and maintains roads, water, sewer and septic systems and what reserves cover them. Report what the documents say; do not judge legality yourself.
 - Ignore cover pages, blank pages, and marketing material.`,
   },
 ];

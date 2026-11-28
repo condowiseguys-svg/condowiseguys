@@ -1,5 +1,6 @@
 import { logger, task, usage } from "@trigger.dev/sdk";
 import { draftReport, routeDraft } from "@/lib/analysis/pipeline";
+import { riskSummary } from "@/lib/analysis/compose";
 import { recordCost } from "@/lib/ops/costs";
 import { logEvent, raiseIssue } from "@/lib/ops/events";
 import { runDocumentChecks } from "@/lib/ops/processing";
@@ -45,10 +46,10 @@ export const processOrderTask = task({
       await recordRunCost(payload.orderId, runId);
       return drafted;
     }
-    const routed = await routeDraft(payload.orderId, drafted.version.id, drafted.report.rating, drafted.missing, {
+    const routed = await routeDraft(payload.orderId, drafted.version.id, riskSummary(drafted.report), drafted.missing, {
       scanned: drafted.scanned,
       unreadable: drafted.unreadable,
-    });
+    }, drafted.report.qc_problems ?? []);
     if (routed.approvedVersionId) {
       await deliverReportTask.trigger(
         { orderId: payload.orderId, reportVersionId: routed.approvedVersionId },
@@ -56,7 +57,7 @@ export const processOrderTask = task({
       );
     }
     await recordRunCost(payload.orderId, runId);
-    return { status: routed.status, version: drafted.version.version, rating: drafted.report.rating };
+    return { status: routed.status, version: drafted.version.version, rating: riskSummary(drafted.report) };
   },
   onFailure: async ({ payload, error, ctx }) => {
     await logEvent(payload.orderId, "system", "processing_failed", { run: ctx.run.id });
